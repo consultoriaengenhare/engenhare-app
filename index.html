@@ -757,7 +757,10 @@ function fazerLogout() {
   <div class="page" id="page-servicos">
     <div class="topbar">
       <div><h2>Serviços</h2><div class="topbar-sub" id="servicos-count">—</div></div>
-      <button class="btn btn-primary" onclick="abrirModalServico()">＋ Novo serviço</button>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-secondary" onclick="renumerarServicos()" title="Renumera todos os serviços pelo ano da data de início">🔢 Renumerar existentes</button>
+        <button class="btn btn-primary" onclick="abrirModalServico()">＋ Novo serviço</button>
+      </div>
     </div>
     <div class="card">
       <div class="search-bar">
@@ -3770,35 +3773,31 @@ function salvarServico() {
   var clienteId  = document.getElementById('sv-cliente').value;
   var descricao  = document.getElementById('sv-descricao').value.trim();
   var valorTotal = parseMoeda(document.getElementById('sv-valor-total').value);
-  if (!clienteId)        { toast('⚠ Selecione o cliente'); return; }
-  if (!descricao)        { toast('⚠ Informe a descrição'); return; }
-  if (!valorTotal)       { toast('⚠ Informe o valor total'); return; }
+  var dataInicio = document.getElementById('sv-data-inicio').value;
+  if (!clienteId)  { toast('⚠ Selecione o cliente'); return; }
+  if (!descricao)  { toast('⚠ Informe a descrição'); return; }
+  if (!valorTotal) { toast('⚠ Informe o valor total'); return; }
 
   var existing = servicoEditId ? servicos.find(function(x){ return x.id === servicoEditId; }) : null;
-  // Numeração sequencial: próximo número = maior número existente + 1
-  var anoAtual = new Date().getFullYear();
+
+  // Ano base: usa data de início se informada, senão ano atual
+  var anoBase = dataInicio
+    ? parseInt(dataInicio.slice(0, 4))
+    : new Date().getFullYear();
+
   var proximoNum = servicoEditId
     ? existing.numero
-    : (function() {
-        // Filtra serviços do ano atual e pega o maior sequencial
-        var doAno = servicos.filter(function(x){
-          return x.numero && String(x.numero).slice(0,4) === String(anoAtual);
-        });
-        if (doAno.length === 0) return parseInt(anoAtual + '001');
-        var maxSeq = Math.max.apply(null, doAno.map(function(x){
-          return parseInt(String(x.numero).slice(4)) || 0;
-        }));
-        return parseInt(anoAtual + String(maxSeq + 1).padStart(3,'0'));
-      })();
+    : gerarNumeroServico(anoBase);
+
   var obj = {
-    id:          servicoEditId || genId(),
-    numero:      proximoNum,
+    id:        servicoEditId || genId(),
+    numero:    proximoNum,
     clienteId,
     descricao,
     valorTotal,
-    dataInicio:  document.getElementById('sv-data-inicio').value,
-    obs:         document.getElementById('sv-obs').value.trim(),
-    createdAt:   existing ? existing.createdAt : new Date().toISOString()
+    dataInicio: dataInicio,
+    obs:        document.getElementById('sv-obs').value.trim(),
+    createdAt:  existing ? existing.createdAt : new Date().toISOString()
   };
 
   if (servicoEditId) {
@@ -3811,9 +3810,51 @@ function salvarServico() {
   saveServicos();
   closeModal('modal-servico');
   renderServicos();
-  // Atualiza o select de serviços no modal de pagamentos se estiver aberto
   popularServicosSelect();
 }
+
+// Gera número sequencial no formato AAAA001
+function gerarNumeroServico(ano) {
+  var anoStr = String(ano);
+  var doAno  = servicos.filter(function(x) {
+    return x.numero && String(x.numero).slice(0, 4) === anoStr;
+  });
+  if (doAno.length === 0) return parseInt(anoStr + '001');
+  var maxSeq = Math.max.apply(null, doAno.map(function(x) {
+    return parseInt(String(x.numero).slice(4)) || 0;
+  }));
+  return parseInt(anoStr + String(maxSeq + 1).padStart(3, '0'));
+}
+
+// Revisa e renumera todos os serviços existentes pelo ano da data de início
+function renumerarServicos() {
+  if (!confirm('Isso vai renumerar TODOS os serviços existentes.\n\nO número será gerado pelo ano da data de início.\nServiços sem data de início usarão o ano atual.\n\nDeseja continuar?')) return;
+
+  // Ordena por data de início (mais antigos primeiro) para sequencial correto
+  var ordenados = servicos.slice().sort(function(a, b) {
+    var da = a.dataInicio || a.createdAt || '';
+    var db = b.dataInicio || b.createdAt || '';
+    return da.localeCompare(db);
+  });
+
+  // Contadores por ano
+  var contadores = {};
+  ordenados.forEach(function(s) {
+    var ano    = s.dataInicio ? parseInt(s.dataInicio.slice(0, 4)) : new Date().getFullYear();
+    var anoStr = String(ano);
+    contadores[anoStr] = (contadores[anoStr] || 0) + 1;
+    var novoNum = parseInt(anoStr + String(contadores[anoStr]).padStart(3, '0'));
+    servicos = servicos.map(function(x) {
+      return x.id === s.id ? Object.assign({}, x, { numero: novoNum }) : x;
+    });
+  });
+
+  saveServicos();
+  renderServicos();
+  toast('✓ ' + servicos.length + ' serviço(s) renumerados com sucesso!');
+}
+
+
 
 function excluirServico(id) {
   if (!confirm('Remover este serviço?')) return;
