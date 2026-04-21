@@ -772,7 +772,8 @@ function fazerLogout() {
         </select>
         <select id="sort-servicos" onchange="renderServicos()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
           <option value="az" selected>A → Z (cliente)</option>
-          <option value="recente">Mais recentes</option>
+          <option value="recente">Mais recentes (data de início)</option>
+          <option value="antigo">Mais antigos (data de início)</option>
         </select>
       </div>
       <div style="overflow-x:auto">
@@ -3899,6 +3900,18 @@ function renderServicos() {
       var ca = clientes.find(function(c){ return c.id === a.clienteId; });
       var cb = clientes.find(function(c){ return c.id === b.clienteId; });
       return (ca?ca.nome_razao_social:'').localeCompare(cb?cb.nome_razao_social:'','pt-BR');
+    });
+  } else if (ordem === 'recente') {
+    filtered = filtered.slice().sort(function(a, b) {
+      var da = a.dataInicio || a.createdAt || '';
+      var db = b.dataInicio || b.createdAt || '';
+      return db.localeCompare(da); // mais recente primeiro
+    });
+  } else if (ordem === 'antigo') {
+    filtered = filtered.slice().sort(function(a, b) {
+      var da = a.dataInicio || a.createdAt || '';
+      var db = b.dataInicio || b.createdAt || '';
+      return da.localeCompare(db); // mais antigo primeiro
     });
   }
 
