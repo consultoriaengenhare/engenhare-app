@@ -209,6 +209,8 @@ function fazerLogout() {
   .sidebar-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; color: rgba(255,255,255,0.3); }
 
   .main { margin-left: 240px; flex: 1; padding: 32px 36px; min-height: 100vh; }
+  #page-pagamentos { max-width: 100%; overflow-x: hidden; }
+  #page-pagamentos .card { overflow: hidden; }
   .page { display: none; }
   .page.active { display: block; }
 
@@ -480,9 +482,9 @@ function fazerLogout() {
       <button class="btn btn-primary" onclick="openModalPagamento()">＋ Novo lançamento</button>
     </div>
     <div class="summary-bar" id="summary-pagamentos"></div>
-    <div class="card">
-      <div class="search-bar">
-        <input type="text" placeholder="Buscar por cliente, descrição, conta..." id="search-pagamentos" oninput="renderPagamentos()" style="flex:1;min-width:180px">
+    <div class="card" style="overflow:hidden">
+      <div class="search-bar" style="flex-wrap:wrap;gap:8px">
+        <input type="text" placeholder="Buscar por cliente, descrição, conta..." id="search-pagamentos" oninput="renderPagamentos()" style="flex:1;min-width:160px">
         <input type="month" id="filter-pag-mes" onchange="renderPagamentos()" title="Filtrar por mês" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('filter-pag-mes').value='';renderPagamentos()" title="Limpar filtro de mês">✕ Mês</button>
         <select id="filter-pag-tipo" onchange="renderPagamentos()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
@@ -497,19 +499,19 @@ function fazerLogout() {
           <option value="cliente">Cliente A→Z</option>
         </select>
       </div>
-      <div style="overflow-x:auto">
-        <table>
+      <div style="overflow-x:auto;width:100%">
+        <table style="min-width:900px;font-size:13px">
           <thead>
             <tr>
-              <th>Data</th>
+              <th style="white-space:nowrap">Data</th>
               <th>Tipo</th>
               <th>Cliente</th>
               <th>Descrição</th>
               <th>Setor</th>
-              <th>Valor Pago</th>
-              <th>Valor do Serviço</th>
+              <th style="white-space:nowrap">Valor Pago</th>
+              <th style="white-space:nowrap">Vl. Serviço</th>
               <th>Resta</th>
-              <th>Forma de Pagamento</th>
+              <th style="white-space:nowrap">Forma Pgto</th>
               <th>Conta</th>
               <th>NFe</th>
               <th>Ações</th>
