@@ -432,6 +432,10 @@ function fazerLogout() {
         <table><thead><tr><th>Razão Social</th><th>Tipo</th><th>Validade</th><th>Situação</th></tr></thead><tbody id="dash-licencas"></tbody></table>
       </div>
     </div>
+    <div class="card" style="margin-top:0">
+      <div class="card-header"><div class="card-title">📌 Condicionantes próximas do vencimento (≤ 45 dias)</div></div>
+      <table><thead><tr><th>Empresa</th><th>Condicionante</th><th>Prazo</th><th>Dias</th></tr></thead><tbody id="dash-condicionantes"></tbody></table>
+    </div>
   </div>
 
   <!-- CLIENTES -->
@@ -471,7 +475,7 @@ function fazerLogout() {
 
   <!-- PAGAMENTOS -->
   <div class="page" id="page-pagamentos">
-    <div class="topbar">
+    <div class="topbar" style="flex-wrap:wrap;gap:10px">
       <div><h2>Pagamentos</h2><div class="topbar-sub" id="pagamentos-count">—</div></div>
       <button class="btn btn-primary" onclick="openModalPagamento()">＋ Novo lançamento</button>
     </div>
@@ -1102,6 +1106,17 @@ function fazerLogout() {
       <div class="form-section">
         <div class="form-section-title">Responsável e Observações</div>
         <div class="form-grid">
+          <div class="field">
+            <label>Status</label>
+            <select id="c-status">
+              <option value="Ativo">Ativo</option>
+              <option value="Inativo">Inativo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Atividade</label>
+            <input type="text" id="c-atividade" placeholder="EX: AVICULTURA, MINERAÇÃO..." oninput="fmtUpper(this)">
+          </div>
           <div class="field form-full">
             <label>Nome do Responsável</label>
             <input type="text" id="c-nome_responsavel" placeholder="RESPONSÁVEL PELO CONTRATO" oninput="fmtUpper(this)">
@@ -1633,7 +1648,7 @@ function toast(msg) {
 // CAMPOS DO CLIENTE
 const CAMPOS = ['cpf_cnpj','nome_razao_social','nome_fantasia','cep','logradouro','endereco','numero','complemento',
   'bairro','cidade','estado','nome_proprietario','cpf_proprietario','telefone','celular',
-  'email','nome_responsavel','observacao'];
+  'email','nome_responsavel','observacao','status','atividade'];
 
 function openModalCliente(id) {
   editingClienteId = id || null;
@@ -2144,6 +2159,8 @@ function renderPagamentos() {
 
   if (ordem === 'data') {
     filtered = filtered.slice().sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+  } else if (ordem === 'recente') {
+    filtered = filtered.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));
   } else if (ordem === 'cliente') {
     filtered = filtered.slice().sort((a,b)=>{
       const ca = clientes.find(c=>c.id===a.clienteId);
@@ -2267,6 +2284,35 @@ function renderDashboard() {
           + '</tr>';
       }).join('')
     : '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma licença próxima do vencimento</td></tr>';
+
+  // Condicionantes próximas do vencimento (≤45 dias)
+  var dc = document.getElementById('dash-condicionantes');
+  if (dc) {
+    var hoje = new Date(); hoje.setHours(0,0,0,0);
+    var condAlerts = [];
+    licencas.forEach(function(l) {
+      (l.condicionantes||[]).forEach(function(c) {
+        if (!c.prazo) return;
+        var p    = new Date(c.prazo + 'T00:00:00');
+        var dias = Math.ceil((p - hoje) / 86400000);
+        if (dias >= 0 && dias <= 45) {
+          condAlerts.push({ empresa: l.razao_social||'—', descricao: c.descricao||'—', prazo: c.prazo, dias: dias });
+        }
+      });
+    });
+    condAlerts.sort(function(a,b){ return a.prazo.localeCompare(b.prazo); });
+    dc.innerHTML = condAlerts.length
+      ? condAlerts.map(function(c){
+          var cor = c.dias <= 15 ? 'background:#fce8e8;color:#c1666b' : 'background:#fdf3d0;color:#8a6200';
+          return '<tr>'
+            + '<td style="font-weight:500">' + c.empresa + '</td>'
+            + '<td style="font-size:12px">' + c.descricao + '</td>'
+            + '<td style="font-size:12px;font-weight:600">' + fmtDate(c.prazo) + '</td>'
+            + '<td><span class="badge" style="' + cor + ';font-size:11px">' + c.dias + 'd</span></td>'
+            + '</tr>';
+        }).join('')
+      : '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma condicionante próxima do vencimento</td></tr>';
+  }
 }
 
 function toggleOutroTipoProc() {
@@ -2303,21 +2349,19 @@ function sudemaAutoFill() {
   var cli = clientes.find(function(c) { return c.nome_razao_social === razao; });
   document.getElementById('su-proprietario').value = cli ? (cli.nome_proprietario || '') : '';
 }
+function sudemaAutoFillSd() {
+  var razao = document.getElementById('su-razao').value;
+  sudemaAutoFill();
+}
 
 function abrirModalSudema(id) {
   sudemaEditId = id || null;
   var reg = id ? sudemaLogins.find(function(x) { return x.id === id; }) : null;
   document.getElementById('modal-sudema-title').textContent = id ? 'Editar login — SUDEMA' : 'Novo login — SUDEMA';
 
-  var opts = '<option value="">— Selecionar cliente cadastrado —</option>';
-  var sorted = clientes.slice().sort(function(a, b) {
-    return (a.nome_razao_social || '').localeCompare(b.nome_razao_social || '', 'pt-BR');
-  });
-  sorted.forEach(function(c) {
-    var sel = (reg && reg.razao_social === c.nome_razao_social) ? ' selected' : '';
-    opts += '<option value="' + c.nome_razao_social + '"' + sel + '>' + c.nome_razao_social + '</option>';
-  });
-  document.getElementById('su-razao').innerHTML = opts;
+  // Usa sd searchable dropdown
+  sdClear('su');
+  if (reg && reg.razao_social) sdSetValue('su', reg.razao_social, reg.razao_social);
 
   document.getElementById('su-proprietario').value = reg ? (reg.proprietario || '') : '';
   document.getElementById('su-login').value = reg ? (reg.login || '') : '';
@@ -2443,21 +2487,14 @@ function cteAutoFill() {
   var cli = clientes.find(function(c) { return c.nome_razao_social === razao; });
   document.getElementById('ct-proprietario').value = cli ? (cli.nome_proprietario || '') : '';
 }
+function cteAutoFillSd() { cteAutoFill(); }
 
 function abrirModalCte(id) {
   cteEditId = id || null;
   var reg = id ? cteLogins.find(function(x) { return x.id === id; }) : null;
   document.getElementById('modal-cte-title').textContent = id ? 'Editar login — CTE' : 'Novo login — CTE';
-
-  var opts = '<option value="">— Selecionar cliente cadastrado —</option>';
-  clientes.slice().sort(function(a,b) {
-    return (a.nome_razao_social||'').localeCompare(b.nome_razao_social||'','pt-BR');
-  }).forEach(function(c) {
-    var sel = (reg && reg.razao_social === c.nome_razao_social) ? ' selected' : '';
-    opts += '<option value="' + c.nome_razao_social + '"' + sel + '>' + c.nome_razao_social + '</option>';
-  });
-  document.getElementById('ct-razao').innerHTML = opts;
-
+  sdClear('ct');
+  if (reg && reg.razao_social) sdSetValue('ct', reg.razao_social, reg.razao_social);
   document.getElementById('ct-proprietario').value = reg ? (reg.proprietario||'') : '';
   document.getElementById('ct-login').value = reg ? (reg.login||'') : '';
   document.getElementById('ct-senha').value = reg ? (reg.senha||'') : '';
@@ -2605,20 +2642,18 @@ function ibamaVerificaDup() {
   }
 }
 
+function ibamaAutoFillSd() {
+  var razao = document.getElementById('ib-razao').value;
+  var cli = clientes.find(function(c) { return c.nome_razao_social === razao; });
+  document.getElementById('ib-proprietario').value = cli ? (cli.nome_proprietario || '') : '';
+}
+
 function abrirModalIbama(id) {
   ibamaEditId = id || null;
   var reg = id ? ibamaLogins.find(function(x) { return x.id === id; }) : null;
   document.getElementById('modal-ibama-title').textContent = id ? 'Editar login — IBAMA' : 'Novo login — IBAMA';
-
-  var opts = '<option value="">— Selecionar cliente cadastrado —</option>';
-  clientes.slice().sort(function(a,b) {
-    return (a.nome_razao_social||'').localeCompare(b.nome_razao_social||'','pt-BR');
-  }).forEach(function(c) {
-    var sel = (reg && reg.razao_social === c.nome_razao_social) ? ' selected' : '';
-    opts += '<option value="' + c.nome_razao_social + '"' + sel + '>' + c.nome_razao_social + '</option>';
-  });
-  document.getElementById('ib-razao').innerHTML = opts;
-
+  sdClear('ib');
+  if (reg && reg.razao_social) sdSetValue('ib', reg.razao_social, reg.razao_social);
   var tipo = reg ? reg.tipo : 'PJ';
   document.getElementById('ib-tipo-pj').checked = tipo === 'PJ';
   document.getElementById('ib-tipo-pf').checked = tipo === 'PF';
@@ -2796,21 +2831,20 @@ function criarNovoSistema() {
 }
 
 // Abre modal para adicionar login no sistema atual
+function outroAutoFillSd() {
+  var razao = document.getElementById('ou-razao').value;
+  var cli = clientes.find(function(c){ return c.nome_razao_social === razao; });
+  document.getElementById('ou-proprietario').value = cli ? (cli.nome_proprietario||'') : '';
+}
+
 function abrirModalOutroLogin(id) {
   var sistema = getSistemaAtual();
   if (!sistema) return;
   outroEditId = id || null;
   var reg = id ? sistema.logins.find(function(x){ return x.id === id; }) : null;
   document.getElementById('modal-outro-login-title').textContent = (id ? 'Editar login — ' : 'Novo login — ') + sistema.nome;
-
-  var opts = '<option value="">— Selecionar cliente cadastrado —</option>';
-  clientes.slice().sort(function(a,b){
-    return (a.nome_razao_social||'').localeCompare(b.nome_razao_social||'','pt-BR');
-  }).forEach(function(c) {
-    var sel = (reg && reg.razao_social === c.nome_razao_social) ? ' selected' : '';
-    opts += '<option value="' + c.nome_razao_social + '"' + sel + '>' + c.nome_razao_social + '</option>';
-  });
-  document.getElementById('ou-razao').innerHTML = opts;
+  sdClear('ou');
+  if (reg && reg.razao_social) sdSetValue('ou', reg.razao_social, reg.razao_social);
   document.getElementById('ou-proprietario').value = reg ? (reg.proprietario||'') : '';
   document.getElementById('ou-login').value = reg ? (reg.login||'') : '';
   document.getElementById('ou-senha').value = reg ? (reg.senha||'') : '';
@@ -4287,11 +4321,19 @@ function onChangeDespCat() {
 function sdInputId(ns)  {
   if (ns === 'li') return 'li-razao-search';
   if (ns === 'pr') return 'pr-razao-search';
+  if (ns === 'su') return 'su-razao-search';
+  if (ns === 'ct') return 'ct-razao-search';
+  if (ns === 'ib') return 'ib-razao-search';
+  if (ns === 'ou') return 'ou-razao-search';
   return 'sv-cliente-search';
 }
 function sdHiddenId(ns) {
   if (ns === 'li') return 'li-razao';
   if (ns === 'pr') return 'pr-razao';
+  if (ns === 'su') return 'su-razao';
+  if (ns === 'ct') return 'ct-razao';
+  if (ns === 'ib') return 'ib-razao';
+  if (ns === 'ou') return 'ou-razao';
   return 'sv-cliente';
 }
 
@@ -4345,6 +4387,10 @@ function sdSelect(ns, clienteId, nome) {
   if (listEl)   listEl.classList.remove('open');
   if (ns === 'li') licencaAutoFill();
   if (ns === 'pr') procAutoFill();
+  if (ns === 'su') sudemaAutoFillSd();
+  if (ns === 'ct') cteAutoFillSd();
+  if (ns === 'ib') ibamaAutoFillSd();
+  if (ns === 'ou') outroAutoFillSd();
 }
 
 function sdClear(ns) {
@@ -5688,14 +5734,18 @@ function googleAlertaManual() {
 
         <div class="field form-full">
           <label>Razão Social (cliente) *</label>
-          <select id="su-razao" onchange="sudemaAutoFill()">
-            <option value="">— Selecionar cliente cadastrado —</option>
-          </select>
+          <div class="sd-wrapper" style="position:relative">
+            <input type="hidden" id="su-razao">
+            <input type="text" class="sd-input" id="su-razao-search" placeholder="Clique ou digite para buscar cliente..." autocomplete="off"
+              oninput="sdFilter('su')" onfocus="sdOpen('su')" onblur="sdBlur('su')" readonly
+              onclick="this.removeAttribute('readonly');sdOpen('su')">
+            <div class="sd-list" id="sd-su-list"></div>
+          </div>
         </div>
 
         <div class="field form-full">
           <label>Proprietário</label>
-          <input type="text" id="su-proprietario" placeholder="Preenchido automaticamente">
+          <input type="text" id="su-proprietario" placeholder="Preenchido automaticamente" oninput="fmtUpper(this)">
         </div>
 
         <div class="field form-full">
@@ -5713,7 +5763,7 @@ function googleAlertaManual() {
 
         <div class="field form-full">
           <label>Observação</label>
-          <textarea id="su-obs" rows="3" placeholder="Anotações sobre este acesso..."></textarea>
+          <textarea id="su-obs" rows="3" placeholder="Anotações sobre este acesso..." oninput="fmtUpperTextarea(this)"></textarea>
         </div>
 
       </div>
@@ -5736,13 +5786,17 @@ function googleAlertaManual() {
       <div class="form-grid">
         <div class="field form-full">
           <label>Razão Social (cliente) *</label>
-          <select id="ct-razao" onchange="cteAutoFill()">
-            <option value="">— Selecionar cliente cadastrado —</option>
-          </select>
+          <div class="sd-wrapper" style="position:relative">
+            <input type="hidden" id="ct-razao">
+            <input type="text" class="sd-input" id="ct-razao-search" placeholder="Clique ou digite para buscar cliente..." autocomplete="off"
+              oninput="sdFilter('ct')" onfocus="sdOpen('ct')" onblur="sdBlur('ct')" readonly
+              onclick="this.removeAttribute('readonly');sdOpen('ct')">
+            <div class="sd-list" id="sd-ct-list"></div>
+          </div>
         </div>
         <div class="field form-full">
           <label>Proprietário</label>
-          <input type="text" id="ct-proprietario" placeholder="Preenchido automaticamente">
+          <input type="text" id="ct-proprietario" placeholder="Preenchido automaticamente" oninput="fmtUpper(this)">
         </div>
         <div class="field form-full">
           <label>Login / Usuário *</label>
@@ -5757,7 +5811,7 @@ function googleAlertaManual() {
         </div>
         <div class="field form-full">
           <label>Observação</label>
-          <textarea id="ct-obs" rows="3" placeholder="Anotações sobre este acesso..."></textarea>
+          <textarea id="ct-obs" rows="3" placeholder="Anotações sobre este acesso..." oninput="fmtUpperTextarea(this)"></textarea>
         </div>
       </div>
     </div>
@@ -5780,14 +5834,18 @@ function googleAlertaManual() {
 
         <div class="field form-full">
           <label>Razão Social (cliente) *</label>
-          <select id="ib-razao" onchange="ibamaAutoFill()">
-            <option value="">— Selecionar cliente cadastrado —</option>
-          </select>
+          <div class="sd-wrapper" style="position:relative">
+            <input type="hidden" id="ib-razao">
+            <input type="text" class="sd-input" id="ib-razao-search" placeholder="Clique ou digite para buscar cliente..." autocomplete="off"
+              oninput="sdFilter('ib')" onfocus="sdOpen('ib')" onblur="sdBlur('ib')" readonly
+              onclick="this.removeAttribute('readonly');sdOpen('ib')">
+            <div class="sd-list" id="sd-ib-list"></div>
+          </div>
         </div>
 
         <div class="field form-full">
           <label>Proprietário</label>
-          <input type="text" id="ib-proprietario" placeholder="Preenchido automaticamente">
+          <input type="text" id="ib-proprietario" placeholder="Preenchido automaticamente" oninput="fmtUpper(this)">
         </div>
 
         <div class="field form-full">
@@ -5822,7 +5880,7 @@ function googleAlertaManual() {
 
         <div class="field form-full">
           <label>Observação</label>
-          <textarea id="ib-obs" rows="3" placeholder="Anotações sobre este acesso..."></textarea>
+          <textarea id="ib-obs" rows="3" placeholder="Anotações sobre este acesso..." oninput="fmtUpperTextarea(this)"></textarea>
         </div>
 
       </div>
@@ -5865,13 +5923,17 @@ function googleAlertaManual() {
       <div class="form-grid">
         <div class="field form-full">
           <label>Razão Social (cliente) *</label>
-          <select id="ou-razao" onchange="outroAutoFill()">
-            <option value="">— Selecionar cliente cadastrado —</option>
-          </select>
+          <div class="sd-wrapper" style="position:relative">
+            <input type="hidden" id="ou-razao">
+            <input type="text" class="sd-input" id="ou-razao-search" placeholder="Clique ou digite para buscar cliente..." autocomplete="off"
+              oninput="sdFilter('ou')" onfocus="sdOpen('ou')" onblur="sdBlur('ou')" readonly
+              onclick="this.removeAttribute('readonly');sdOpen('ou')">
+            <div class="sd-list" id="sd-ou-list"></div>
+          </div>
         </div>
         <div class="field form-full">
           <label>Proprietário</label>
-          <input type="text" id="ou-proprietario" placeholder="Preenchido automaticamente">
+          <input type="text" id="ou-proprietario" placeholder="Preenchido automaticamente" oninput="fmtUpper(this)">
         </div>
         <div class="field form-full">
           <label>Login / Usuário *</label>
@@ -5886,7 +5948,7 @@ function googleAlertaManual() {
         </div>
         <div class="field form-full">
           <label>Observação</label>
-          <textarea id="ou-obs" rows="3" placeholder="Anotações sobre este acesso..."></textarea>
+          <textarea id="ou-obs" rows="3" placeholder="Anotações sobre este acesso..." oninput="fmtUpperTextarea(this)"></textarea>
         </div>
       </div>
     </div>
@@ -6129,7 +6191,7 @@ function googleAlertaManual() {
           </div>
           <div class="field form-full">
             <label>Observação</label>
-            <textarea id="pr-obs" rows="3" placeholder="Informações adicionais sobre o processo..."></textarea>
+            <textarea id="pr-obs" rows="3" placeholder="Informações adicionais sobre o processo..." oninput="fmtUpperTextarea(this)"></textarea>
           </div>
         </div>
       </div>
