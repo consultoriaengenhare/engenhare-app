@@ -1974,8 +1974,8 @@ function calcResta() {
       var saldoAnterior = Math.max(0, s.valorTotal - jaPayoAntes);
       var resta = Math.max(0, saldoAnterior - pagamentoAtual);
       document.getElementById('p-resta').value = resta.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-      // Mantém o campo valor do serviço com o valor total (não o saldo parcial)
-      setMoedaInput('p-valor-servico', s.valorTotal);
+      // Atualiza campo valor do serviço com o saldo anterior (o que faltava pagar)
+      setMoedaInput('p-valor-servico', saldoAnterior);
     }
   } else {
     // Sem serviço: subtrai valor pago do valor do serviço informado manualmente
@@ -2094,21 +2094,9 @@ function salvarPagamento() {
   if (tipo === 'Retirada') descricao = 'RETIRADA - ' + retiradaPessoa.toUpperCase();
   if (!descricao) { toast('⚠ Informe a descrição'); return; }
 
-  const pago      = parseMoeda(document.getElementById('p-valor-pago').value);
-  const servico   = parseMoeda(document.getElementById('p-valor-servico').value);
-  const servicoIdSave = document.getElementById('p-servico-id').value;
-  var resta;
-  if (servicoIdSave) {
-    var srvObj = servicos.find(function(x){ return x.id === servicoIdSave; });
-    if (srvObj) {
-      var jaPayoAntesSave = getTotalPagoServico(servicoIdSave, editingPagamentoId);
-      resta = Math.max(0, srvObj.valorTotal - jaPayoAntesSave - pago);
-    } else {
-      resta = servico > 0 ? Math.max(0, servico - pago) : 0;
-    }
-  } else {
-    resta = servico > 0 ? Math.max(0, servico - pago) : 0;
-  }
+  const pago    = parseMoeda(document.getElementById('p-valor-pago').value);
+  const servico = parseMoeda(document.getElementById('p-valor-servico').value);
+  const resta   = servico > 0 ? Math.max(0, servico - pago) : 0;
 
   const existing = editingPagamentoId ? pagamentos.find(p=>p.id===editingPagamentoId) : null;
   const obj = {
@@ -2238,6 +2226,13 @@ function renderPagamentos() {
     const nfeBadge = p.nfe==='Sim'
       ? 'background:#d8f3dc;color:#2d6a4f'
       : 'background:#f0f0f0;color:#888';
+    // Resta: calculado dinamicamente, exibido apenas em Receita/Retirada com serviço vinculado
+    var restaDisplay = '—'; var restaCor = 'var(--text-muted)';
+    if (p.tipo !== 'Despesa' && p.servicoId) {
+      var srvR = servicos.find(function(x){ return x.id === p.servicoId; });
+      if (srvR) { var rc = Math.max(0, srvR.valorTotal - getTotalPagoServico(p.servicoId));
+        restaDisplay = fmtVal(rc); restaCor = rc > 0 ? 'var(--red)' : 'var(--green-mid)'; }
+    }
     return '<tr>' +
       '<td style="font-size:13px;white-space:nowrap">' + fmtDate(p.data) + '</td>' +
       '<td><span class="badge" style="' + badge + '">' + (p.tipo||'—') + '</span></td>' +
@@ -2246,7 +2241,7 @@ function renderPagamentos() {
       '<td style="font-size:13px;font-weight:600">' + (p.setor||'—') + '</td>' +
       '<td style="font-weight:600">' + (p.valorPago ? fmtVal(p.valorPago) : '—') + '</td>' +
       '<td style="font-size:13px">' + (p.valorServico ? fmtVal(p.valorServico) : '—') + '</td>' +
-      '<td style="font-size:13px;color:' + (p.resta>0?'var(--red)':'var(--text-muted)') + '">' + (p.resta ? fmtVal(p.resta) : '—') + '</td>' +
+      '<td style="font-size:13px;color:' + restaCor + '">' + restaDisplay + '</td>' +
       '<td style="font-size:13px">' + (p.forma||'—') + '</td>' +
       '<td style="font-size:13px">' + (p.conta||'—') + '</td>' +
       '<td><span class="badge" style="' + nfeBadge + '">' + (p.nfe||'Não') + '</span></td>' +
@@ -5563,6 +5558,13 @@ renderPagamentos = function() {
     const nome = c ? c.nome_razao_social : (p.clienteId ? '<em style="color:var(--text-muted)">Removido</em>' : '—');
     const badge= TIPO_BADGE[p.tipo] || 'background:#f0f0f0;color:#555';
     const nfeBadge = p.nfe==='Sim' ? 'background:#d8f3dc;color:#2d6a4f' : 'background:#f0f0f0;color:#888';
+    // Resta: calculado dinamicamente, exibido apenas em Receita/Retirada com serviço vinculado
+    var restaDisplay = '—'; var restaCor = 'var(--text-muted)';
+    if (p.tipo !== 'Despesa' && p.servicoId) {
+      var srvR = servicos.find(function(x){ return x.id === p.servicoId; });
+      if (srvR) { var rc = Math.max(0, srvR.valorTotal - getTotalPagoServico(p.servicoId));
+        restaDisplay = fmtVal(rc); restaCor = rc > 0 ? 'var(--red)' : 'var(--green-mid)'; }
+    }
     return '<tr>' +
       '<td style="font-size:13px;white-space:nowrap">' + fmtDate(p.data) + '</td>' +
       '<td><span class="badge" style="' + badge + '">' + (p.tipo||'—') + '</span></td>' +
@@ -5571,7 +5573,7 @@ renderPagamentos = function() {
       '<td style="font-size:13px;font-weight:600">' + (p.setor||'—') + '</td>' +
       '<td style="font-weight:600">' + (p.valorPago ? fmtVal(p.valorPago) : '—') + '</td>' +
       '<td style="font-size:13px">' + (p.valorServico ? fmtVal(p.valorServico) : '—') + '</td>' +
-      '<td style="font-size:13px;color:' + (p.resta>0?'var(--red)':'var(--text-muted)') + '">' + (p.resta ? fmtVal(p.resta) : '—') + '</td>' +
+      '<td style="font-size:13px;color:' + restaCor + '">' + restaDisplay + '</td>' +
       '<td style="font-size:13px">' + (p.forma||'—') + '</td>' +
       '<td style="font-size:13px">' + (p.conta||'—') + '</td>' +
       '<td><span class="badge" style="' + nfeBadge + '">' + (p.nfe||'Não') + '</span></td>' +
