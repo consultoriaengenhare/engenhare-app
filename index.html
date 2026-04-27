@@ -1974,8 +1974,8 @@ function calcResta() {
       var saldoAnterior = Math.max(0, s.valorTotal - jaPayoAntes);
       var resta = Math.max(0, saldoAnterior - pagamentoAtual);
       document.getElementById('p-resta').value = resta.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-      // Atualiza campo valor do serviço com o saldo anterior (o que faltava pagar)
-      setMoedaInput('p-valor-servico', saldoAnterior);
+      // Mantém o campo valor do serviço com o valor total (não o saldo parcial)
+      setMoedaInput('p-valor-servico', s.valorTotal);
     }
   } else {
     // Sem serviço: subtrai valor pago do valor do serviço informado manualmente
@@ -2088,15 +2088,27 @@ function salvarPagamento() {
     if (!retiradaPessoa) { toast('⚠ Selecione quem está realizando a retirada'); return; }
   }
 
-  // Descrição: usa o que o usuário digitou no campo; para retirada usa pessoa
+  // Descrição: para despesa sempre usa a categoria; para retirada usa pessoa; receita é manual
   var descricao = document.getElementById('p-descricao').value.trim();
-  if (tipo === 'Despesa' && !descricao) descricao = despCat === 'Outros' ? despOutro : despCat;
+  if (tipo === 'Despesa')  descricao = despCat === 'Outros' ? despOutro : despCat;
   if (tipo === 'Retirada') descricao = 'RETIRADA - ' + retiradaPessoa.toUpperCase();
   if (!descricao) { toast('⚠ Informe a descrição'); return; }
 
-  const pago    = parseMoeda(document.getElementById('p-valor-pago').value);
-  const servico = parseMoeda(document.getElementById('p-valor-servico').value);
-  const resta   = servico > 0 ? Math.max(0, servico - pago) : 0;
+  const pago      = parseMoeda(document.getElementById('p-valor-pago').value);
+  const servico   = parseMoeda(document.getElementById('p-valor-servico').value);
+  const servicoIdSave = document.getElementById('p-servico-id').value;
+  var resta;
+  if (servicoIdSave) {
+    var srvObj = servicos.find(function(x){ return x.id === servicoIdSave; });
+    if (srvObj) {
+      var jaPayoAntesSave = getTotalPagoServico(servicoIdSave, editingPagamentoId);
+      resta = Math.max(0, srvObj.valorTotal - jaPayoAntesSave - pago);
+    } else {
+      resta = servico > 0 ? Math.max(0, servico - pago) : 0;
+    }
+  } else {
+    resta = servico > 0 ? Math.max(0, servico - pago) : 0;
+  }
 
   const existing = editingPagamentoId ? pagamentos.find(p=>p.id===editingPagamentoId) : null;
   const obj = {
