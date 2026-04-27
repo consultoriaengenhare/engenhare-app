@@ -1963,6 +1963,15 @@ function setMoedaInput(elId, valor) {
 }
 
 function calcResta() {
+  var tipo = document.getElementById('p-tipo').value;
+
+  // Despesa não tem valor de serviço nem resta
+  if (tipo === 'Despesa') {
+    document.getElementById('p-valor-servico').value = '';
+    document.getElementById('p-resta').value = '';
+    return;
+  }
+
   var pagamentoAtual = parseMoeda(document.getElementById('p-valor-pago').value);
   var servicoId      = document.getElementById('p-servico-id').value;
 
@@ -2005,11 +2014,16 @@ function onChangeServicoVinculado() {
   }
   var s = servicos.find(function(x){ return x.id === servicoId; });
   if (s) {
-    var jaPayoAntes = getTotalPagoServico(servicoId, editingPagamentoId);
-    var saldoRestante = Math.max(0, s.valorTotal - jaPayoAntes);
-    setMoedaInput('p-valor-servico', saldoRestante);
-    // Despesa: descrição vem da categoria, não do serviço
-    if (tipo !== 'Despesa') document.getElementById('p-descricao').value = s.descricao.toUpperCase();
+    // Despesa: não preenche valor do serviço nem resta
+    if (tipo !== 'Despesa') {
+      var jaPayoAntes = getTotalPagoServico(servicoId, editingPagamentoId);
+      var saldoRestante = Math.max(0, s.valorTotal - jaPayoAntes);
+      setMoedaInput('p-valor-servico', saldoRestante);
+      document.getElementById('p-descricao').value = s.descricao.toUpperCase();
+    } else {
+      document.getElementById('p-valor-servico').value = '';
+      document.getElementById('p-resta').value = '';
+    }
     calcResta();
   }
 }
