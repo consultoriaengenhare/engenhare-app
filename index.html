@@ -1209,10 +1209,10 @@ function fazerLogout() {
             <select id="p-desp-cat" onchange="onChangeDespCat()">
               <option value="">— Selecione —</option>
               <option value="ART">ART</option>
-              <option value="Impostos">Impostos</option>
-              <option value="Terceirizados">Terceirizados</option>
-              <option value="Comissão">Comissão</option>
-              <option value="Outros">Outros</option>
+              <option value="IMPOSTOS">IMPOSTOS</option>
+              <option value="TERCEIRIZADOS">TERCEIRIZADOS</option>
+              <option value="COMISSÃO">COMISSÃO</option>
+              <option value="OUTROS">OUTROS</option>
             </select>
           </div>
           <div class="field form-full" id="campo-desp-outro" style="display:none">
@@ -2088,9 +2088,9 @@ function salvarPagamento() {
     if (!retiradaPessoa) { toast('⚠ Selecione quem está realizando a retirada'); return; }
   }
 
-  // Descrição: para despesa sempre usa a categoria; para retirada usa pessoa; receita é manual
+  // Descrição: usa o que o usuário digitou no campo; para retirada usa pessoa
   var descricao = document.getElementById('p-descricao').value.trim();
-  if (tipo === 'Despesa')  descricao = despCat === 'Outros' ? despOutro : despCat;
+  if (tipo === 'Despesa' && !descricao) descricao = despCat === 'Outros' ? despOutro : despCat;
   if (tipo === 'Retirada') descricao = 'RETIRADA - ' + retiradaPessoa.toUpperCase();
   if (!descricao) { toast('⚠ Informe a descrição'); return; }
 
