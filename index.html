@@ -2226,13 +2226,6 @@ function renderPagamentos() {
     const nfeBadge = p.nfe==='Sim'
       ? 'background:#d8f3dc;color:#2d6a4f'
       : 'background:#f0f0f0;color:#888';
-    // Resta: calculado dinamicamente, exibido apenas em Receita/Retirada com serviço vinculado
-    var restaDisplay = '—'; var restaCor = 'var(--text-muted)';
-    if (p.tipo !== 'Despesa' && p.servicoId) {
-      var srvR = servicos.find(function(x){ return x.id === p.servicoId; });
-      if (srvR) { var rc = Math.max(0, srvR.valorTotal - getTotalPagoServico(p.servicoId));
-        restaDisplay = fmtVal(rc); restaCor = rc > 0 ? 'var(--red)' : 'var(--green-mid)'; }
-    }
     return '<tr>' +
       '<td style="font-size:13px;white-space:nowrap">' + fmtDate(p.data) + '</td>' +
       '<td><span class="badge" style="' + badge + '">' + (p.tipo||'—') + '</span></td>' +
@@ -2240,8 +2233,8 @@ function renderPagamentos() {
       '<td style="font-size:13px">' + (p.descricao||'—') + '</td>' +
       '<td style="font-size:13px;font-weight:600">' + (p.setor||'—') + '</td>' +
       '<td style="font-weight:600">' + (p.valorPago ? fmtVal(p.valorPago) : '—') + '</td>' +
-      '<td style="font-size:13px">' + (p.valorServico ? fmtVal(p.valorServico) : '—') + '</td>' +
-      '<td style="font-size:13px;color:' + restaCor + '">' + restaDisplay + '</td>' +
+      '<td style="font-size:13px">' + (p.tipo !== 'Despesa' && p.valorServico ? fmtVal(p.valorServico) : '—') + '</td>' +
+      '<td style="font-size:13px;color:var(--text-muted)">—</td>' +
       '<td style="font-size:13px">' + (p.forma||'—') + '</td>' +
       '<td style="font-size:13px">' + (p.conta||'—') + '</td>' +
       '<td><span class="badge" style="' + nfeBadge + '">' + (p.nfe||'Não') + '</span></td>' +
@@ -5558,13 +5551,6 @@ renderPagamentos = function() {
     const nome = c ? c.nome_razao_social : (p.clienteId ? '<em style="color:var(--text-muted)">Removido</em>' : '—');
     const badge= TIPO_BADGE[p.tipo] || 'background:#f0f0f0;color:#555';
     const nfeBadge = p.nfe==='Sim' ? 'background:#d8f3dc;color:#2d6a4f' : 'background:#f0f0f0;color:#888';
-    // Resta: calculado dinamicamente, exibido apenas em Receita/Retirada com serviço vinculado
-    var restaDisplay = '—'; var restaCor = 'var(--text-muted)';
-    if (p.tipo !== 'Despesa' && p.servicoId) {
-      var srvR = servicos.find(function(x){ return x.id === p.servicoId; });
-      if (srvR) { var rc = Math.max(0, srvR.valorTotal - getTotalPagoServico(p.servicoId));
-        restaDisplay = fmtVal(rc); restaCor = rc > 0 ? 'var(--red)' : 'var(--green-mid)'; }
-    }
     return '<tr>' +
       '<td style="font-size:13px;white-space:nowrap">' + fmtDate(p.data) + '</td>' +
       '<td><span class="badge" style="' + badge + '">' + (p.tipo||'—') + '</span></td>' +
@@ -5572,8 +5558,8 @@ renderPagamentos = function() {
       '<td style="font-size:13px">' + (p.descricao||'—') + '</td>' +
       '<td style="font-size:13px;font-weight:600">' + (p.setor||'—') + '</td>' +
       '<td style="font-weight:600">' + (p.valorPago ? fmtVal(p.valorPago) : '—') + '</td>' +
-      '<td style="font-size:13px">' + (p.valorServico ? fmtVal(p.valorServico) : '—') + '</td>' +
-      '<td style="font-size:13px;color:' + restaCor + '">' + restaDisplay + '</td>' +
+      '<td style="font-size:13px">' + (p.tipo !== 'Despesa' && p.valorServico ? fmtVal(p.valorServico) : '—') + '</td>' +
+      '<td style="font-size:13px;color:var(--text-muted)">—</td>' +
       '<td style="font-size:13px">' + (p.forma||'—') + '</td>' +
       '<td style="font-size:13px">' + (p.conta||'—') + '</td>' +
       '<td><span class="badge" style="' + nfeBadge + '">' + (p.nfe||'Não') + '</span></td>' +
