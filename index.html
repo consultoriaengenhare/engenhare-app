@@ -2248,8 +2248,8 @@ function renderPagamentos() {
       '<td style="font-size:13px">' + (p.descricao||'—') + '</td>' +
       '<td style="font-size:13px;font-weight:600">' + (p.setor||'—') + '</td>' +
       '<td style="font-weight:600">' + (p.valorPago ? fmtVal(p.valorPago) : '—') + '</td>' +
-      '<td style="font-size:13px">' + (p.valorServico ? fmtVal(p.valorServico) : '—') + '</td>' +
-      '<td style="font-size:13px;color:' + (p.resta>0?'var(--red)':'var(--text-muted)') + '">' + (p.resta ? fmtVal(p.resta) : '—') + '</td>' +
+      '<td style="font-size:13px">' + (p.tipo === 'Despesa' ? '—' : (p.valorServico ? fmtVal(p.valorServico) : '—')) + '</td>' +
+      '<td style="font-size:13px;color:' + (p.resta>0?'var(--red)':'var(--text-muted)') + '">' + (p.tipo === 'Despesa' ? '—' : (p.resta ? fmtVal(p.resta) : '—')) + '</td>' +
       '<td style="font-size:13px">' + (p.forma||'—') + '</td>' +
       '<td style="font-size:13px">' + (p.conta||'—') + '</td>' +
       '<td><span class="badge" style="' + nfeBadge + '">' + (p.nfe||'Não') + '</span></td>' +
@@ -5576,8 +5576,8 @@ renderPagamentos = function() {
       '<td style="font-size:13px">' + (p.descricao||'—') + '</td>' +
       '<td style="font-size:13px;font-weight:600">' + (p.setor||'—') + '</td>' +
       '<td style="font-weight:600">' + (p.valorPago ? fmtVal(p.valorPago) : '—') + '</td>' +
-      '<td style="font-size:13px">' + (p.valorServico ? fmtVal(p.valorServico) : '—') + '</td>' +
-      '<td style="font-size:13px;color:' + (p.resta>0?'var(--red)':'var(--text-muted)') + '">' + (p.resta ? fmtVal(p.resta) : '—') + '</td>' +
+      '<td style="font-size:13px">' + (p.tipo === 'Despesa' ? '—' : (p.valorServico ? fmtVal(p.valorServico) : '—')) + '</td>' +
+      '<td style="font-size:13px;color:' + (p.resta>0?'var(--red)':'var(--text-muted)') + '">' + (p.tipo === 'Despesa' ? '—' : (p.resta ? fmtVal(p.resta) : '—')) + '</td>' +
       '<td style="font-size:13px">' + (p.forma||'—') + '</td>' +
       '<td style="font-size:13px">' + (p.conta||'—') + '</td>' +
       '<td><span class="badge" style="' + nfeBadge + '">' + (p.nfe||'Não') + '</span></td>' +
