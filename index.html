@@ -1996,19 +1996,20 @@ function onChangePagCliente() {
 
 function onChangeServicoVinculado() {
   var servicoId = document.getElementById('p-servico-id').value;
+  var tipo = document.getElementById('p-tipo').value;
   if (!servicoId) {
     document.getElementById('p-valor-servico').value = '';
-    document.getElementById('p-descricao').value = '';
+    if (tipo !== 'Despesa') document.getElementById('p-descricao').value = '';
     calcResta();
     return;
   }
   var s = servicos.find(function(x){ return x.id === servicoId; });
   if (s) {
-    // Mostra o saldo que ainda falta pagar (já descontando pagamentos anteriores)
     var jaPayoAntes = getTotalPagoServico(servicoId, editingPagamentoId);
     var saldoRestante = Math.max(0, s.valorTotal - jaPayoAntes);
     setMoedaInput('p-valor-servico', saldoRestante);
-    document.getElementById('p-descricao').value = s.descricao.toUpperCase();
+    // Despesa: descrição vem da categoria, não do serviço
+    if (tipo !== 'Despesa') document.getElementById('p-descricao').value = s.descricao.toUpperCase();
     calcResta();
   }
 }
@@ -2060,7 +2061,6 @@ function openModalPagamento(id) {
 
   popularServicosSelectFiltrado();
   document.getElementById('p-servico-id').value = p ? (p.servicoId||'') : '';
-  // Restaura descrição APÓS onChangeDespCat para não ser sobrescrita pela categoria
   document.getElementById('p-descricao').value  = p ? (p.descricao||'') : '';
 
   setMoedaInput('p-valor-pago',    p ? p.valorPago    : null);
@@ -2089,7 +2089,7 @@ function salvarPagamento() {
     if (!retiradaPessoa) { toast('⚠ Selecione quem está realizando a retirada'); return; }
   }
 
-  // Descrição: usa o que o usuário digitou; para despesa usa categoria só se campo vazio; retirada é automático
+  // Descrição: para despesa sempre usa a categoria; para retirada usa pessoa; receita é manual
   var descricao = document.getElementById('p-descricao').value.trim();
   if (tipo === 'Despesa' && !descricao) descricao = despCat === 'Outros' ? despOutro : despCat;
   if (tipo === 'Retirada') descricao = 'RETIRADA - ' + retiradaPessoa.toUpperCase();
@@ -4382,7 +4382,6 @@ function onChangeDespCat() {
   var campoOutro = document.getElementById('campo-desp-outro');
   campoOutro.style.display = cat === 'Outros' ? 'flex' : 'none';
   var descAtual = document.getElementById('p-descricao').value.trim();
-  // Preenche automaticamente só se o campo estiver vazio ou contiver o valor de uma categoria anterior
   var categorias = ['ART','IMPOSTOS','TERCEIRIZADOS','COMISSÃO','OUTROS'];
   var eraAutoFill = !descAtual || categorias.indexOf(descAtual) !== -1;
   if (cat && cat !== 'Outros' && eraAutoFill) {
