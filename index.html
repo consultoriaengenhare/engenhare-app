@@ -2060,6 +2060,7 @@ function openModalPagamento(id) {
 
   popularServicosSelectFiltrado();
   document.getElementById('p-servico-id').value = p ? (p.servicoId||'') : '';
+  // Restaura descrição APÓS onChangeDespCat para não ser sobrescrita pela categoria
   document.getElementById('p-descricao').value  = p ? (p.descricao||'') : '';
 
   setMoedaInput('p-valor-pago',    p ? p.valorPago    : null);
@@ -2088,9 +2089,9 @@ function salvarPagamento() {
     if (!retiradaPessoa) { toast('⚠ Selecione quem está realizando a retirada'); return; }
   }
 
-  // Descrição: para despesa sempre usa a categoria; para retirada usa pessoa; receita é manual
+  // Descrição: usa o que o usuário digitou; para despesa usa categoria só se campo vazio; retirada é automático
   var descricao = document.getElementById('p-descricao').value.trim();
-  if (tipo === 'Despesa')  descricao = despCat === 'Outros' ? despOutro : despCat;
+  if (tipo === 'Despesa' && !descricao) descricao = despCat === 'Outros' ? despOutro : despCat;
   if (tipo === 'Retirada') descricao = 'RETIRADA - ' + retiradaPessoa.toUpperCase();
   if (!descricao) { toast('⚠ Informe a descrição'); return; }
 
@@ -2233,8 +2234,8 @@ function renderPagamentos() {
       '<td style="font-size:13px">' + (p.descricao||'—') + '</td>' +
       '<td style="font-size:13px;font-weight:600">' + (p.setor||'—') + '</td>' +
       '<td style="font-weight:600">' + (p.valorPago ? fmtVal(p.valorPago) : '—') + '</td>' +
-      '<td style="font-size:13px">' + (p.tipo !== 'Despesa' && p.valorServico ? fmtVal(p.valorServico) : '—') + '</td>' +
-      '<td style="font-size:13px;color:var(--text-muted)">—</td>' +
+      '<td style="font-size:13px">' + (p.valorServico ? fmtVal(p.valorServico) : '—') + '</td>' +
+      '<td style="font-size:13px;color:' + (p.resta>0?'var(--red)':'var(--text-muted)') + '">' + (p.resta ? fmtVal(p.resta) : '—') + '</td>' +
       '<td style="font-size:13px">' + (p.forma||'—') + '</td>' +
       '<td style="font-size:13px">' + (p.conta||'—') + '</td>' +
       '<td><span class="badge" style="' + nfeBadge + '">' + (p.nfe||'Não') + '</span></td>' +
@@ -4380,9 +4381,13 @@ function onChangeDespCat() {
   var cat = document.getElementById('p-desp-cat').value;
   var campoOutro = document.getElementById('campo-desp-outro');
   campoOutro.style.display = cat === 'Outros' ? 'flex' : 'none';
-  if (cat && cat !== 'Outros') {
+  var descAtual = document.getElementById('p-descricao').value.trim();
+  // Preenche automaticamente só se o campo estiver vazio ou contiver o valor de uma categoria anterior
+  var categorias = ['ART','IMPOSTOS','TERCEIRIZADOS','COMISSÃO','OUTROS'];
+  var eraAutoFill = !descAtual || categorias.indexOf(descAtual) !== -1;
+  if (cat && cat !== 'Outros' && eraAutoFill) {
     document.getElementById('p-descricao').value = cat.toUpperCase();
-  } else if (!cat) {
+  } else if (!cat && eraAutoFill) {
     document.getElementById('p-descricao').value = '';
   }
 }
@@ -5558,8 +5563,8 @@ renderPagamentos = function() {
       '<td style="font-size:13px">' + (p.descricao||'—') + '</td>' +
       '<td style="font-size:13px;font-weight:600">' + (p.setor||'—') + '</td>' +
       '<td style="font-weight:600">' + (p.valorPago ? fmtVal(p.valorPago) : '—') + '</td>' +
-      '<td style="font-size:13px">' + (p.tipo !== 'Despesa' && p.valorServico ? fmtVal(p.valorServico) : '—') + '</td>' +
-      '<td style="font-size:13px;color:var(--text-muted)">—</td>' +
+      '<td style="font-size:13px">' + (p.valorServico ? fmtVal(p.valorServico) : '—') + '</td>' +
+      '<td style="font-size:13px;color:' + (p.resta>0?'var(--red)':'var(--text-muted)') + '">' + (p.resta ? fmtVal(p.resta) : '—') + '</td>' +
       '<td style="font-size:13px">' + (p.forma||'—') + '</td>' +
       '<td style="font-size:13px">' + (p.conta||'—') + '</td>' +
       '<td><span class="badge" style="' + nfeBadge + '">' + (p.nfe||'Não') + '</span></td>' +
