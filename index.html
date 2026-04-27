@@ -1235,10 +1235,10 @@ function fazerLogout() {
           <div class="field">
             <label>Setor</label>
             <select id="p-setor">
-              <option value="">— Selecione —</option>
-              <option value="ADM">Administração</option>
-              <option value="MA">Meio Ambiente</option>
-              <option value="ST">Segurança do Trabalho</option>
+              <option value="">— SELECIONE —</option>
+              <option value="ADM">ADMINISTRAÇÃO</option>
+              <option value="MA">MEIO AMBIENTE</option>
+              <option value="ST">SEGURANÇA DO TRABALHO</option>
             </select>
           </div>
           <div class="field">
@@ -1373,6 +1373,8 @@ window._fbInitData = function() {
     renderExtrasNav();
     verificarAlertasAbertura();
     verificarLembreteBackup();
+    // Migração automática de setores para siglas maiúsculas
+    migrarSetores();
     // Dispara alertas Google Calendar + Gmail (1x por dia)
     setTimeout(function() { googleDispararAlertas(false); }, 2000);
   }
@@ -3884,7 +3886,32 @@ function salvarServico() {
   popularServicosSelect();
 }
 
-// Gera número sequencial no formato AAAA001
+// Migração: normaliza setor de todos os pagamentos existentes para siglas
+async function migrarSetores() {
+  var mapa = {
+    'administração': 'ADM', 'administracao': 'ADM', 'adm': 'ADM',
+    'meio ambiente': 'MA', 'ma': 'MA',
+    'segurança do trabalho': 'ST', 'seguranca do trabalho': 'ST', 'st': 'ST'
+  };
+  var alterados = 0;
+  pagamentos = pagamentos.map(function(p) {
+    if (!p.setor) return p;
+    var normalizado = mapa[p.setor.toLowerCase().trim()];
+    if (normalizado && normalizado !== p.setor) {
+      alterados++;
+      return Object.assign({}, p, { setor: normalizado });
+    }
+    return p;
+  });
+  if (alterados > 0) {
+    await save();
+    renderPagamentos();
+    toast('✓ ' + alterados + ' lançamento(s) com setor atualizado');
+  } else {
+    toast('Nenhum lançamento precisou de atualização');
+  }
+}
+
 function gerarNumeroServico(ano) {
   var anoStr = String(ano);
   var doAno  = servicos.filter(function(x) {
