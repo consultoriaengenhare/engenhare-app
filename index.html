@@ -257,6 +257,10 @@ function fazerLogout() {
   .search-bar input, .search-bar select { padding: 9px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; background: var(--surface2); outline: none; }
   .search-bar input { flex: 1; min-width: 200px; }
   .search-bar input:focus, .search-bar select:focus { border-color: var(--green-mid); background: #fff; }
+  .search-wrap { position:relative; flex:1; min-width:200px; display:flex; align-items:center; }
+  .search-wrap input { width:100%; padding-right:30px !important; }
+  .search-wrap .btn-clear-search { position:absolute; right:8px; background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:14px; padding:0; line-height:1; display:none; }
+  .search-wrap input:not(:placeholder-shown) ~ .btn-clear-search { display:block; }
 
   .empty-state { text-align: center; padding: 60px 24px; color: var(--text-muted); }
   .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
@@ -448,7 +452,7 @@ function fazerLogout() {
     </div>
     <div class="card">
       <div class="search-bar">
-        <input type="text" placeholder="Buscar por CPF/CNPJ, nome, fantasia, cidade..." id="search-clientes" oninput="renderClientes()">
+        <div class="search-wrap"><input type="text" placeholder="Buscar por CPF/CNPJ, nome, fantasia, cidade..." id="search-clientes" oninput="renderClientes()"><button class="btn-clear-search" onclick="document.getElementById('search-clientes').value='';renderClientes()" title="Limpar busca">✕</button></div>
         <select id="sort-clientes" onchange="renderClientes()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
           <option value="recente">Mais recentes</option>
           <option value="az" selected>A → Z (nome)</option>
@@ -484,7 +488,7 @@ function fazerLogout() {
     <div class="summary-bar" id="summary-pagamentos"></div>
     <div class="card" style="overflow:hidden">
       <div class="search-bar" style="flex-wrap:wrap;gap:8px">
-        <input type="text" placeholder="Buscar por cliente, descrição, conta..." id="search-pagamentos" oninput="renderPagamentos()" style="flex:1;min-width:160px">
+        <div class="search-wrap" style="min-width:160px"><input type="text" id="search-pagamentos" placeholder="Buscar por cliente, descrição, conta..." oninput="renderPagamentos()"><button class="btn-clear-search" onclick="document.getElementById('search-pagamentos').value='';renderPagamentos()" title="Limpar busca">✕</button></div>
         <input type="month" id="filter-pag-mes" onchange="renderPagamentos()" title="Filtrar por mês" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('filter-pag-mes').value='';renderPagamentos()" title="Limpar filtro de mês">✕ Mês</button>
         <select id="filter-pag-tipo" onchange="renderPagamentos()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
@@ -531,7 +535,7 @@ function fazerLogout() {
     </div>
     <div class="card">
       <div class="search-bar">
-        <input type="text" id="search-sudema" placeholder="Buscar por proprietário, razão social ou login..." oninput="renderSudema()">
+        <div class="search-wrap"><input type="text" id="search-sudema" placeholder="Buscar por proprietário, razão social ou login..." oninput="renderSudema()"><button class="btn-clear-search" onclick="document.getElementById('search-sudema').value='';renderSudema()" title="Limpar busca">✕</button></div>
         <select id="sort-sudema" onchange="renderSudema()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
           <option value="az" selected>A → Z (razão social)</option>
           <option value="za">Z → A (razão social)</option>
@@ -564,7 +568,7 @@ function fazerLogout() {
     </div>
     <div class="card">
       <div class="search-bar">
-        <input type="text" id="search-cte" placeholder="Buscar por proprietário, razão social ou login..." oninput="renderCte()">
+        <div class="search-wrap"><input type="text" id="search-cte" placeholder="Buscar por proprietário, razão social ou login..." oninput="renderCte()"><button class="btn-clear-search" onclick="document.getElementById('search-cte').value='';renderCte()" title="Limpar busca">✕</button></div>
         <select id="sort-cte" onchange="renderCte()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
           <option value="az" selected>A → Z (razão social)</option>
           <option value="za">Z → A (razão social)</option>
@@ -597,7 +601,7 @@ function fazerLogout() {
     </div>
     <div class="card">
       <div class="search-bar">
-        <input type="text" id="search-ibama" placeholder="Buscar por proprietário, razão social ou login..." oninput="renderIbama()">
+        <div class="search-wrap"><input type="text" id="search-ibama" placeholder="Buscar por proprietário, razão social ou login..." oninput="renderIbama()"><button class="btn-clear-search" onclick="document.getElementById('search-ibama').value='';renderIbama()" title="Limpar busca">✕</button></div>
         <select id="filter-ibama-tipo" onchange="renderIbama()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
           <option value="">PJ e PF</option>
           <option value="PJ">Somente PJ</option>
@@ -636,7 +640,7 @@ function fazerLogout() {
     </div>
     <div class="card">
       <div class="search-bar">
-        <input type="text" id="search-outro" placeholder="Buscar por proprietário, razão social ou login..." oninput="renderOutro()">
+        <div class="search-wrap"><input type="text" id="search-outro" placeholder="Buscar por proprietário, razão social ou login..." oninput="renderOutro()"><button class="btn-clear-search" onclick="document.getElementById('search-outro').value='';renderOutro()" title="Limpar busca">✕</button></div>
         <select id="sort-outro" onchange="renderOutro()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
           <option value="az" selected>A → Z (razão social)</option>
           <option value="za">Z → A (razão social)</option>
@@ -669,7 +673,7 @@ function fazerLogout() {
     </div>
     <div class="card">
       <div class="search-bar">
-        <input type="text" id="search-licencas" placeholder="Buscar por nº, razão social, órgão, atividade..." oninput="renderLicencas()">
+        <div class="search-wrap"><input type="text" id="search-licencas" placeholder="Buscar por nº, razão social, órgão, atividade..." oninput="renderLicencas()"><button class="btn-clear-search" onclick="document.getElementById('search-licencas').value='';renderLicencas()" title="Limpar busca">✕</button></div>
         <select id="filter-licenca-situacao" onchange="renderLicencas()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
           <option value="">Todas as situações</option>
           <option value="LICENÇA VÁLIDA">Licença Válida</option>
@@ -716,7 +720,7 @@ function fazerLogout() {
     </div>
     <div class="card">
       <div class="search-bar">
-        <input type="text" id="search-processos" placeholder="Buscar por razão social, solicitação, protocolo..." oninput="renderProcessos()">
+        <div class="search-wrap"><input type="text" id="search-processos" placeholder="Buscar por razão social, solicitação, protocolo..." oninput="renderProcessos()"><button class="btn-clear-search" onclick="document.getElementById('search-processos').value='';renderProcessos()" title="Limpar busca">✕</button></div>
         <select id="filter-proc-orgao" onchange="renderProcessos()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
           <option value="">Todos os órgãos</option>
         </select>
@@ -771,11 +775,17 @@ function fazerLogout() {
     <div id="servicos-resumo" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:16px"></div>
     <div class="card">
       <div class="search-bar">
-        <input type="text" id="search-servicos" placeholder="Buscar por cliente, descrição..." oninput="renderServicos()">
-        <select id="filter-serv-status" onchange="renderServicos()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
-          <option value="">Todos</option>
+        <div class="search-wrap"><input type="text" id="search-servicos" placeholder="Buscar por cliente, descrição..." oninput="renderServicos()"><button class="btn-clear-search" onclick="document.getElementById('search-servicos').value='';renderServicos()" title="Limpar busca">✕</button></div>
+        <select id="filter-serv-ano" onchange="renderServicos()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
+          <option value="">Ano: Todos</option>
+        </select>
+        <select id="filter-serv-andamento" onchange="renderServicos()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
+          <option value="">Andamento: Todos</option>
           <option value="Em andamento">Em andamento</option>
           <option value="Finalizado">Finalizado</option>
+        </select>
+        <select id="filter-serv-pgto" onchange="renderServicos()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
+          <option value="">Pagamento: Todos</option>
           <option value="Em aberto">A receber</option>
           <option value="Quitado">Quitado</option>
         </select>
@@ -922,7 +932,7 @@ function fazerLogout() {
     </div>
     <div class="card">
       <div class="search-bar">
-        <input type="text" id="search-condicionantes" placeholder="Buscar por licença, cliente ou condicionante..." oninput="renderCondicionantesMod()">
+        <div class="search-wrap"><input type="text" id="search-condicionantes" placeholder="Buscar por licença, cliente ou condicionante..." oninput="renderCondicionantesMod()"><button class="btn-clear-search" onclick="document.getElementById('search-condicionantes').value='';renderCondicionantesMod()" title="Limpar busca">✕</button></div>
         <select id="filter-cond-status" onchange="renderCondicionantesMod()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
           <option value="">Todos</option>
           <option value="ok">No prazo</option>
@@ -1245,10 +1255,10 @@ function fazerLogout() {
             <label>Conta</label>
             <select id="p-conta">
               <option value="">— Selecione —</option>
-              <option value="Cora Julianna">Cora Julianna</option>
-              <option value="Cora Jefferson">Cora Jefferson</option>
-              <option value="Conta Pessoal Julianna">Conta Pessoal Julianna</option>
-              <option value="Conta Pessoal Jefferson">Conta Pessoal Jefferson</option>
+              <option value="CORA JULIANNA">CORA JULIANNA</option>
+              <option value="CORA JEFFERSON">CORA JEFFERSON</option>
+              <option value="CONTA PESSOAL JULIANNA">CONTA PESSOAL JULIANNA</option>
+              <option value="CONTA PESSOAL JEFFERSON">CONTA PESSOAL JEFFERSON</option>
             </select>
           </div>
         </div>
@@ -3886,29 +3896,38 @@ function salvarServico() {
   popularServicosSelect();
 }
 
-// Migração: normaliza setor de todos os pagamentos existentes para siglas
+// Migração: normaliza setor e contas de todos os pagamentos existentes
 async function migrarSetores() {
-  var mapa = {
+  var mapaSetor = {
     'administração': 'ADM', 'administracao': 'ADM', 'adm': 'ADM',
     'meio ambiente': 'MA', 'ma': 'MA',
     'segurança do trabalho': 'ST', 'seguranca do trabalho': 'ST', 'st': 'ST'
   };
+  var mapaConta = {
+    'cora julianna': 'CORA JULIANNA',
+    'cora jefferson': 'CORA JEFFERSON',
+    'conta pessoal julianna': 'CONTA PESSOAL JULIANNA',
+    'conta pessoal jefferson': 'CONTA PESSOAL JEFFERSON',
+  };
   var alterados = 0;
   pagamentos = pagamentos.map(function(p) {
-    if (!p.setor) return p;
-    var normalizado = mapa[p.setor.toLowerCase().trim()];
-    if (normalizado && normalizado !== p.setor) {
-      alterados++;
-      return Object.assign({}, p, { setor: normalizado });
+    var changed = false;
+    var novo = Object.assign({}, p);
+    if (p.setor) {
+      var ns = mapaSetor[p.setor.toLowerCase().trim()];
+      if (ns && ns !== p.setor) { novo.setor = ns; changed = true; }
     }
-    return p;
+    if (p.conta) {
+      var nc = mapaConta[p.conta.toLowerCase().trim()];
+      if (nc && nc !== p.conta) { novo.conta = nc; changed = true; }
+    }
+    if (changed) alterados++;
+    return novo;
   });
   if (alterados > 0) {
     await save();
     renderPagamentos();
-    toast('✓ ' + alterados + ' lançamento(s) com setor atualizado');
-  } else {
-    toast('Nenhum lançamento precisou de atualização');
+    toast('✓ ' + alterados + ' lançamento(s) atualizados (setor/conta)');
   }
 }
 
@@ -3977,9 +3996,22 @@ function popularServicosSelect() {
 }
 
 function renderServicos() {
-  var q        = (document.getElementById('search-servicos')||{value:''}).value.toLowerCase();
-  var filtSt   = (document.getElementById('filter-serv-status')||{value:''}).value;
-  var ordem    = (document.getElementById('sort-servicos')||{value:'az'}).value;
+  var q             = (document.getElementById('search-servicos')||{value:''}).value.toLowerCase();
+  var filtAndamento = (document.getElementById('filter-serv-andamento')||{value:''}).value;
+  var filtPgto      = (document.getElementById('filter-serv-pgto')||{value:''}).value;
+  var filtAno       = (document.getElementById('filter-serv-ano')||{value:''}).value;
+  var ordem         = (document.getElementById('sort-servicos')||{value:'az'}).value;
+
+  // Popular select de anos dinamicamente
+  var selAno = document.getElementById('filter-serv-ano');
+  if (selAno) {
+    var anos = [...new Set(servicos.map(function(s){
+      return s.dataInicio ? s.dataInicio.slice(0,4) : (s.numero ? String(s.numero).slice(0,4) : '');
+    }).filter(Boolean))].sort().reverse();
+    var anoAtual = selAno.value;
+    selAno.innerHTML = '<option value="">Ano: Todos</option>' +
+      anos.map(function(a){ return '<option value="' + a + '"' + (anoAtual===a?' selected':'') + '>' + a + '</option>'; }).join('');
+  }
 
   var filtered = servicos.filter(function(s){
     var cli = clientes.find(function(c){ return c.id === s.clienteId; });
@@ -3988,10 +4020,14 @@ function renderServicos() {
     var quitado = pago >= s.valorTotal;
     var statusPgto = quitado ? 'Quitado' : 'Em aberto';
     var statusServ = s.statusServico || 'Em andamento';
-    if (filtSt === 'Em aberto' && statusPgto !== 'Em aberto') return false;
-    if (filtSt === 'Quitado'   && statusPgto !== 'Quitado')   return false;
-    if (filtSt === 'Em andamento' && statusServ !== 'Em andamento') return false;
-    if (filtSt === 'Finalizado'   && statusServ !== 'Finalizado')   return false;
+    // Filtro por ano (usa dataInicio ou os 4 primeiros dígitos do número)
+    if (filtAno) {
+      var anoServ = s.dataInicio ? s.dataInicio.slice(0,4) : (s.numero ? String(s.numero).slice(0,4) : '');
+      if (anoServ !== filtAno) return false;
+    }
+    if (filtAndamento && statusServ !== filtAndamento) return false;
+    if (filtPgto === 'Em aberto' && statusPgto !== 'Em aberto') return false;
+    if (filtPgto === 'Quitado'   && statusPgto !== 'Quitado')   return false;
     if (!q) return true;
     return nome.includes(q)
       || (s.descricao||'').toLowerCase().includes(q)
@@ -4753,7 +4789,7 @@ function exportarRelatorioMensal() {
 
     lista.forEach(function(p, idx){
       if(y>272){ pdfFooter(doc,pagNum,''); doc.addPage(); pagNum++; pdfHeader(doc,'Relatorio Mensal', nomeMes.replace('ç','c').replace('ã','a').replace('ê','e')); y=36; }
-      var conta = (p.conta||'').replace('Conta Pessoal ','C.P. ');
+      var conta = (p.conta||'').replace('CONTA PESSOAL ','C.P. ');
       var desc = doc.splitTextToSize((p.descricao||'—').slice(0,50), lDet[2]-3);
       var alt = Math.max(7, desc.length*4+3);
       if(y+alt>272){ pdfFooter(doc,pagNum,''); doc.addPage(); pagNum++; pdfHeader(doc,'Relatorio Mensal',''); y=36; }
@@ -5023,7 +5059,7 @@ function exportarExtratoPDF() {
       if(idx%2===0){doc.setFillColor.apply(doc,cinzaClaro); doc.rect(margem,y,lE.reduce(function(a,b){return a+b;},0),alt,'F');}
       doc.setTextColor.apply(doc,texto); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
       var x=margem;
-      [fmtDate(p.data),null,(p.conta||'—').replace('Conta Pessoal ','C.P. ').slice(0,18),(p.forma||'—').slice(0,14),fmtVal(p.valorPago||0)].forEach(function(v,i){
+      [fmtDate(p.data),null,(p.conta||'—').replace('CONTA PESSOAL ','C.P. ').slice(0,18),(p.forma||'—').slice(0,14),fmtVal(p.valorPago||0)].forEach(function(v,i){
         if(i===1){ doc.text(desc,x+1.5,y+alt/2+1); }
         else if(i===4){ doc.text(String(v),x+lE[i]-1.5,y+alt/2+1,{align:'right'}); }
         else{ doc.text(String(v||'—'),x+1.5,y+alt/2+1); }
@@ -5357,7 +5393,7 @@ function exportarBalancoPDF() {
     lista.forEach(function(p,idx){
       if(y>272){ pdfFooter(doc,pagNum,''); doc.addPage(); pagNum++; pdfHeader(doc,'Relatorio Mensal '+ano,''); y=36; }
       var cli=clientes.find(function(c){return c.id===p.clienteId;});
-      var conta = (p.conta||'').replace('Conta Pessoal ','C.P. ').replace('Cora ','Cora ');
+      var conta = (p.conta||'').replace('CONTA PESSOAL ','C.P. ').replace('CORA ','CORA ');
       var desc = doc.splitTextToSize((p.descricao||'—').slice(0,40), lDet[2]-3);
       var alt = Math.max(6, desc.length*4+2);
       if(y+alt>272){ pdfFooter(doc,pagNum,''); doc.addPage(); pagNum++; pdfHeader(doc,'Relatorio Mensal '+ano,''); y=36; }
@@ -5435,7 +5471,7 @@ function exportarBalancoAnualPDF() {
 
     listasAno.forEach(function(p,idx){
       if(y>272){ pdfFooter(doc,pagNum,''); doc.addPage(); pagNum++; pdfHeader(doc,'Relatorio Anual '+ano,''); y=36; }
-      var conta=(p.conta||'').replace('Conta Pessoal ','C.P. ');
+      var conta=(p.conta||'').replace('CONTA PESSOAL ','C.P. ');
       var desc=doc.splitTextToSize((p.descricao||'—').slice(0,40),lMes[2]-3);
       var alt=Math.max(6,desc.length*4+2);
       if(y+alt>272){ pdfFooter(doc,pagNum,''); doc.addPage(); pagNum++; pdfHeader(doc,'Relatorio Anual '+ano,''); y=36; }
@@ -6449,7 +6485,7 @@ function googleAlertaManual() {
         </div>
         <div class="field form-full">
           <label>Observações</label>
-          <textarea id="sv-obs" rows="2" placeholder="Informações adicionais..."></textarea>
+          <textarea id="sv-obs" rows="2" placeholder="Informações adicionais..." oninput="fmtUpperTextarea(this)"></textarea>
         </div>
       </div>
     </div>
