@@ -1922,11 +1922,11 @@ function renderClientes() {
     (c.email||'').toLowerCase().includes(q)
   );
   if (ordem === 'az') {
-    filtered = [...filtered].sort((a,b) => (a.nome_razao_social||'').localeCompare(b.nome_razao_social||'', 'pt-BR'));
+    filtered = filtered.slice().sort((a,b) => (a.nome_razao_social||'').localeCompare(b.nome_razao_social||'', 'pt-BR'));
   } else if (ordem === 'za') {
-    filtered = [...filtered].sort((a,b) => (b.nome_razao_social||'').localeCompare(a.nome_razao_social||'', 'pt-BR'));
+    filtered = filtered.slice().sort((a,b) => (b.nome_razao_social||'').localeCompare(a.nome_razao_social||'', 'pt-BR'));
   } else if (ordem === 'cidade') {
-    filtered = [...filtered].sort((a,b) => (a.cidade||'').localeCompare(b.cidade||'', 'pt-BR'));
+    filtered = filtered.slice().sort((a,b) => (a.cidade||'').localeCompare(b.cidade||'', 'pt-BR'));
   }
   // 'recente' mantém a ordem de inserção (padrão)
   document.getElementById('clientes-count').textContent =
@@ -2391,8 +2391,8 @@ function suToggleSenha() {
 }
 
 function sudemaAutoFill() {
-  var razao = document.getElementById('su-razao').value;
-  var cli = clientes.find(function(c) { return c.nome_razao_social === razao; });
+  var cid = document.getElementById('su-razao').value;
+  var cli = clientes.find(function(c) { return c.id === cid || c.nome_razao_social === cid; });
   document.getElementById('su-proprietario').value = cli ? (cli.nome_proprietario || '') : '';
 }
 function sudemaAutoFillSd() {
@@ -2407,7 +2407,10 @@ function abrirModalSudema(id) {
 
   // Usa sd searchable dropdown
   sdClear('su');
-  if (reg && reg.razao_social) sdSetValue('su', reg.razao_social, reg.razao_social);
+  if (reg && reg.razao_social) {
+    var cliSu = clientes.find(function(c){ return c.nome_razao_social === reg.razao_social; });
+    sdSetValue('su', cliSu ? cliSu.id : reg.razao_social, reg.razao_social);
+  }
 
   document.getElementById('su-proprietario').value = reg ? (reg.proprietario || '') : '';
   document.getElementById('su-login').value = reg ? (reg.login || '') : '';
@@ -2419,7 +2422,9 @@ function abrirModalSudema(id) {
 }
 
 function salvarSudema() {
-  var razao = document.getElementById('su-razao').value;
+  var clienteId = document.getElementById('su-razao').value;
+  var cli = clientes.find(function(c){ return c.id === clienteId; });
+  var razao = cli ? cli.nome_razao_social : clienteId;
   var login = document.getElementById('su-login').value.trim();
   var senha = document.getElementById('su-senha').value.trim();
   if (!razao) { toast('⚠ Selecione a Razão Social'); return; }
@@ -2529,8 +2534,8 @@ function ctToggleSenha() {
 }
 
 function cteAutoFill() {
-  var razao = document.getElementById('ct-razao').value;
-  var cli = clientes.find(function(c) { return c.nome_razao_social === razao; });
+  var cid = document.getElementById('ct-razao').value;
+  var cli = clientes.find(function(c) { return c.id === cid || c.nome_razao_social === cid; });
   document.getElementById('ct-proprietario').value = cli ? (cli.nome_proprietario || '') : '';
 }
 function cteAutoFillSd() { cteAutoFill(); }
@@ -2540,7 +2545,10 @@ function abrirModalCte(id) {
   var reg = id ? cteLogins.find(function(x) { return x.id === id; }) : null;
   document.getElementById('modal-cte-title').textContent = id ? 'Editar login — CTE' : 'Novo login — CTE';
   sdClear('ct');
-  if (reg && reg.razao_social) sdSetValue('ct', reg.razao_social, reg.razao_social);
+  if (reg && reg.razao_social) {
+    var cliCt = clientes.find(function(c){ return c.nome_razao_social === reg.razao_social; });
+    sdSetValue('ct', cliCt ? cliCt.id : reg.razao_social, reg.razao_social);
+  }
   document.getElementById('ct-proprietario').value = reg ? (reg.proprietario||'') : '';
   document.getElementById('ct-login').value = reg ? (reg.login||'') : '';
   document.getElementById('ct-senha').value = reg ? (reg.senha||'') : '';
@@ -2551,7 +2559,9 @@ function abrirModalCte(id) {
 }
 
 function salvarCte() {
-  var razao = document.getElementById('ct-razao').value;
+  var clienteId_ct = document.getElementById('ct-razao').value;
+  var cli_ct = clientes.find(function(c){ return c.id === clienteId_ct-razao; });
+  var razao = cli_ct ? cli_ct-razao.nome_razao_social : clienteId_ct-razao;
   var login = document.getElementById('ct-login').value.trim();
   var senha = document.getElementById('ct-senha').value.trim();
   if (!razao) { toast('⚠ Selecione a Razão Social'); return; }
@@ -2689,8 +2699,8 @@ function ibamaVerificaDup() {
 }
 
 function ibamaAutoFillSd() {
-  var razao = document.getElementById('ib-razao').value;
-  var cli = clientes.find(function(c) { return c.nome_razao_social === razao; });
+  var cid = document.getElementById('ib-razao').value;
+  var cli = clientes.find(function(c) { return c.id === cid || c.nome_razao_social === cid; });
   document.getElementById('ib-proprietario').value = cli ? (cli.nome_proprietario || '') : '';
 }
 
@@ -2699,7 +2709,10 @@ function abrirModalIbama(id) {
   var reg = id ? ibamaLogins.find(function(x) { return x.id === id; }) : null;
   document.getElementById('modal-ibama-title').textContent = id ? 'Editar login — IBAMA' : 'Novo login — IBAMA';
   sdClear('ib');
-  if (reg && reg.razao_social) sdSetValue('ib', reg.razao_social, reg.razao_social);
+  if (reg && reg.razao_social) {
+    var cliIb = clientes.find(function(c){ return c.nome_razao_social === reg.razao_social; });
+    sdSetValue('ib', cliIb ? cliIb.id : reg.razao_social, reg.razao_social);
+  }
   var tipo = reg ? reg.tipo : 'PJ';
   document.getElementById('ib-tipo-pj').checked = tipo === 'PJ';
   document.getElementById('ib-tipo-pf').checked = tipo === 'PF';
@@ -2714,7 +2727,9 @@ function abrirModalIbama(id) {
 }
 
 function salvarIbama() {
-  var razao = document.getElementById('ib-razao').value;
+  var clienteId_ib = document.getElementById('ib-razao').value;
+  var cli_ib = clientes.find(function(c){ return c.id === clienteId_ib-razao; });
+  var razao = cli_ib ? cli_ib-razao.nome_razao_social : clienteId_ib-razao;
   var tipo  = ibamaGetTipo();
   var login = document.getElementById('ib-login').value.trim();
   var senha = document.getElementById('ib-senha').value.trim();
@@ -2878,8 +2893,8 @@ function criarNovoSistema() {
 
 // Abre modal para adicionar login no sistema atual
 function outroAutoFillSd() {
-  var razao = document.getElementById('ou-razao').value;
-  var cli = clientes.find(function(c){ return c.nome_razao_social === razao; });
+  var cid = document.getElementById('ou-razao').value;
+  var cli = clientes.find(function(c){ return c.id === cid || c.nome_razao_social === cid; });
   document.getElementById('ou-proprietario').value = cli ? (cli.nome_proprietario||'') : '';
 }
 
@@ -2890,7 +2905,10 @@ function abrirModalOutroLogin(id) {
   var reg = id ? sistema.logins.find(function(x){ return x.id === id; }) : null;
   document.getElementById('modal-outro-login-title').textContent = (id ? 'Editar login — ' : 'Novo login — ') + sistema.nome;
   sdClear('ou');
-  if (reg && reg.razao_social) sdSetValue('ou', reg.razao_social, reg.razao_social);
+  if (reg && reg.razao_social) {
+    var cliOu = clientes.find(function(c){ return c.nome_razao_social === reg.razao_social; });
+    sdSetValue('ou', cliOu ? cliOu.id : reg.razao_social, reg.razao_social);
+  }
   document.getElementById('ou-proprietario').value = reg ? (reg.proprietario||'') : '';
   document.getElementById('ou-login').value = reg ? (reg.login||'') : '';
   document.getElementById('ou-senha').value = reg ? (reg.senha||'') : '';
@@ -2901,8 +2919,8 @@ function abrirModalOutroLogin(id) {
 }
 
 function outroAutoFill() {
-  var razao = document.getElementById('ou-razao').value;
-  var cli = clientes.find(function(c){ return c.nome_razao_social === razao; });
+  var cid = document.getElementById('ou-razao').value;
+  var cli = clientes.find(function(c){ return c.id === cid || c.nome_razao_social === cid; });
   document.getElementById('ou-proprietario').value = cli ? (cli.nome_proprietario||'') : '';
 }
 
@@ -2916,7 +2934,9 @@ function ouToggleSenha() {
 function salvarOutro() {
   var sistema = getSistemaAtual();
   if (!sistema) return;
-  var razao = document.getElementById('ou-razao').value;
+  var clienteId_ou = document.getElementById('ou-razao').value;
+  var cli_ou = clientes.find(function(c){ return c.id === clienteId_ou-razao; });
+  var razao = cli_ou ? cli_ou-razao.nome_razao_social : clienteId_ou-razao;
   var login = document.getElementById('ou-login').value.trim();
   var senha = document.getElementById('ou-senha').value.trim();
   if (!razao) { toast('⚠ Selecione a Razão Social'); return; }
@@ -4005,9 +4025,9 @@ function renderServicos() {
   // Popular select de anos dinamicamente
   var selAno = document.getElementById('filter-serv-ano');
   if (selAno) {
-    var anos = [...new Set(servicos.map(function(s){
+    var anos = Array.from(new Set(servicos.map(function(s){
       return s.dataInicio ? s.dataInicio.slice(0,4) : (s.numero ? String(s.numero).slice(0,4) : '');
-    }).filter(Boolean))].sort().reverse();
+    }).filter(Boolean))).sort().reverse();
     var anoAtual = selAno.value;
     selAno.innerHTML = '<option value="">Ano: Todos</option>' +
       anos.map(function(a){ return '<option value="' + a + '"' + (anoAtual===a?' selected':'') + '>' + a + '</option>'; }).join('');
@@ -4270,7 +4290,7 @@ function setTabBalanco(tab) {
 }
 
 function renderBalanco() {
-  var anos = [...new Set(pagamentos.map(function(p){ return (p.data||'').slice(0,4); }).filter(Boolean))].sort();
+  var anos = Array.from(new Set(pagamentos.map(function(p){ return (p.data||'').slice(0,4); }).filter(Boolean))).sort();
   if (!anos.length) anos = [new Date().getFullYear().toString()];
   var selAno = document.getElementById('bal-ano-mensal');
   var anoAtual = selAno.value || new Date().getFullYear().toString();
@@ -4332,7 +4352,7 @@ function renderBalancoMensal() {
 }
 
 function renderBalancoAnual() {
-  var anos = [...new Set(pagamentos.map(function(p){ return (p.data||'').slice(0,4); }).filter(Boolean))].sort();
+  var anos = Array.from(new Set(pagamentos.map(function(p){ return (p.data||'').slice(0,4); }).filter(Boolean))).sort();
   var tbody = document.getElementById('tbody-balanco-anual');
   var tfoot = document.getElementById('tfoot-balanco-anual');
   if (!tbody) return;
@@ -4706,7 +4726,7 @@ async function importarBackup() {
 // ── DIALOG RELATÓRIO ─────────────────────────────────
 function abrirDialogRelatorio() {
   // Popula select de meses
-  var meses = [...new Set(pagamentos.map(function(p){ return (p.data||'').slice(0,7); }).filter(Boolean))].sort().reverse();
+  var meses = Array.from(new Set(pagamentos.map(function(p){ return (p.data||'').slice(0,7); }).filter(Boolean))).sort().reverse();
   var NOMES_MESES = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   var selMes = document.getElementById('rel-mes-select');
   selMes.innerHTML = '<option value="">— Selecione o mês —</option>';
@@ -4717,7 +4737,7 @@ function abrirDialogRelatorio() {
   });
 
   // Popula select de anos
-  var anos = [...new Set(pagamentos.map(function(p){ return (p.data||'').slice(0,4); }).filter(Boolean))].sort().reverse();
+  var anos = Array.from(new Set(pagamentos.map(function(p){ return (p.data||'').slice(0,4); }).filter(Boolean))).sort().reverse();
   var selAno = document.getElementById('rel-ano-select');
   selAno.innerHTML = '<option value="">— Selecione o ano —</option>';
   anos.forEach(function(a){ selAno.innerHTML += '<option value="' + a + '">' + a + '</option>'; });
@@ -5418,7 +5438,7 @@ function exportarBalancoPDF() {
 
 // ── RELATÓRIO ANUAL PDF ───────────────────────────────
 function exportarBalancoAnualPDF() {
-  var anos = [...new Set(pagamentos.map(function(p){ return (p.data||'').slice(0,4); }).filter(Boolean))].sort();
+  var anos = Array.from(new Set(pagamentos.map(function(p){ return (p.data||'').slice(0,4); }).filter(Boolean))).sort();
   if (!anos.length) { toast('⚠ Nenhum lancamento cadastrado'); return; }
 
   var { jsPDF } = window.jspdf;
