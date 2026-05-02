@@ -2423,8 +2423,13 @@ function abrirModalSudema(id) {
 
 function salvarSudema() {
   var clienteId = document.getElementById('su-razao').value;
+  var inputNome = document.getElementById('su-razao-search') ? document.getElementById('su-razao-search').value.trim() : '';
   var cli = clientes.find(function(c){ return c.id === clienteId; });
-  var razao = cli ? cli.nome_razao_social : clienteId;
+  // Fallback: se hidden vazio mas input tem texto, tenta buscar pelo nome
+  if (!cli && inputNome) {
+    cli = clientes.find(function(c){ return c.nome_razao_social === inputNome; });
+  }
+  var razao = cli ? cli.nome_razao_social : (clienteId || inputNome);
   var login = document.getElementById('su-login').value.trim();
   var senha = document.getElementById('su-senha').value.trim();
   if (!razao) { toast('⚠ Selecione a Razão Social'); return; }
@@ -2560,8 +2565,9 @@ function abrirModalCte(id) {
 
 function salvarCte() {
   var clienteId_ct = document.getElementById('ct-razao').value;
-  var cli_ct = clientes.find(function(c){ return c.id === clienteId_ct-razao; });
-  var razao = cli_ct ? cli_ct-razao.nome_razao_social : clienteId_ct-razao;
+  var inputNome_ct = document.getElementById('ct-razao-search') ? document.getElementById('ct-razao-search').value.trim() : '';
+  var cli_ct = clientes.find(function(c){ return c.id === clienteId_ct; }) || clientes.find(function(c){ return c.nome_razao_social === inputNome_ct; });
+  var razao = cli_ct ? cli_ct.nome_razao_social : (clienteId_ct || inputNome_ct);
   var login = document.getElementById('ct-login').value.trim();
   var senha = document.getElementById('ct-senha').value.trim();
   if (!razao) { toast('⚠ Selecione a Razão Social'); return; }
@@ -2728,8 +2734,9 @@ function abrirModalIbama(id) {
 
 function salvarIbama() {
   var clienteId_ib = document.getElementById('ib-razao').value;
-  var cli_ib = clientes.find(function(c){ return c.id === clienteId_ib-razao; });
-  var razao = cli_ib ? cli_ib-razao.nome_razao_social : clienteId_ib-razao;
+  var inputNome_ib = document.getElementById('ib-razao-search') ? document.getElementById('ib-razao-search').value.trim() : '';
+  var cli_ib = clientes.find(function(c){ return c.id === clienteId_ib; }) || clientes.find(function(c){ return c.nome_razao_social === inputNome_ib; });
+  var razao = cli_ib ? cli_ib.nome_razao_social : (clienteId_ib || inputNome_ib);
   var tipo  = ibamaGetTipo();
   var login = document.getElementById('ib-login').value.trim();
   var senha = document.getElementById('ib-senha').value.trim();
@@ -2935,8 +2942,9 @@ function salvarOutro() {
   var sistema = getSistemaAtual();
   if (!sistema) return;
   var clienteId_ou = document.getElementById('ou-razao').value;
-  var cli_ou = clientes.find(function(c){ return c.id === clienteId_ou-razao; });
-  var razao = cli_ou ? cli_ou-razao.nome_razao_social : clienteId_ou-razao;
+  var inputNome_ou = document.getElementById('ou-razao-search') ? document.getElementById('ou-razao-search').value.trim() : '';
+  var cli_ou = clientes.find(function(c){ return c.id === clienteId_ou; }) || clientes.find(function(c){ return c.nome_razao_social === inputNome_ou; });
+  var razao = cli_ou ? cli_ou.nome_razao_social : (clienteId_ou || inputNome_ou);
   var login = document.getElementById('ou-login').value.trim();
   var senha = document.getElementById('ou-senha').value.trim();
   if (!razao) { toast('⚠ Selecione a Razão Social'); return; }
@@ -4546,7 +4554,7 @@ function sdBlur(ns) {
   setTimeout(function() {
     var listEl = document.getElementById('sd-' + ns + '-list');
     if (listEl) listEl.classList.remove('open');
-  }, 180);
+  }, 300);
 }
 
 function sdSelect(ns, clienteId, nome) {
