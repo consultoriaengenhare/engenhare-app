@@ -251,7 +251,14 @@ function fazerLogout() {
   .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
   .badge-green { background: var(--green-pale); color: var(--green-mid); }
   .badge-amber { background: var(--amber-pale); color: #8a6200; }
+  .prog-bar-wrap { height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin:4px 0 6px; }
+  .prog-bar-fill { height:100%;background:var(--green-mid);border-radius:3px;transition:width .3s; }
   .badge-red { background: var(--red-pale); color: var(--red); }
+  .pendencia-badge { display:inline-flex;align-items:center;justify-content:center;min-width:28px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;cursor:default; }
+  .pend-pc   { background:#fee2e2;color:#b91c1c }
+  .pend-pi   { background:#fef9c3;color:#a16207 }
+  .pend-po   { background:#e0f0ff;color:#1d4ed8 }
+  .pend-none { background:var(--surface2);color:var(--text-muted) }
 
   .search-bar { display: flex; align-items: center; gap: 10px; padding: 16px 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
   .search-bar input, .search-bar select { padding: 9px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; background: var(--surface2); outline: none; }
@@ -399,11 +406,19 @@ function fazerLogout() {
     </div>
     <button class="nav-item" onclick="navigate('licencas')"><span class="nav-icon">📋</span> Licenças</button>
     <button class="nav-item" onclick="navigate('condicionantes')"><span class="nav-icon">📌</span> Condicionantes</button>
-    <button class="nav-item" onclick="navigate('processos')"><span class="nav-icon">⚙️</span> Processos em Andamento</button>
+    <button class="nav-item" onclick="navigate('processos')"><span class="nav-icon">⚙️</span> Processos</button>
     <button class="nav-item" onclick="navigate('dashfinanceiro')"><span class="nav-icon">💰</span> Dashboard Financeiro</button>
     <button class="nav-item" onclick="navigate('servicos')"><span class="nav-icon">📁</span> Serviços</button>
     <button class="nav-item" onclick="navigate('pagamentos')"><span class="nav-icon">💳</span> Pagamentos</button>
     <button class="nav-item" onclick="navigate('balanco')"><span class="nav-icon">📊</span> Balanço</button>
+
+    <div class="nav-label" style="margin-top:12px">Comercial</div>
+    <button class="nav-item" onclick="navigate('prospeccao')"><span class="nav-icon">🎯</span> Prospecção</button>
+    <button class="nav-item" onclick="navigate('contatos')"><span class="nav-icon">📒</span> Contatos</button>
+    <button class="nav-item" onclick="navigate('propostas')"><span class="nav-icon">📝</span> Propostas</button>
+
+    <div class="nav-label" style="margin-top:12px">Trabalhista</div>
+    <button class="nav-item" onclick="navigate('sesmt')"><span class="nav-icon">🩺</span> Controle de Exames</button>
   </div>
   <div class="sidebar-footer">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08)">
@@ -428,19 +443,19 @@ function fazerLogout() {
       <div><h2>Dashboard</h2><div class="topbar-sub">Visão geral operacional</div></div>
     </div>
     <div class="stats-grid" id="stats-grid"></div>
-    <div class="two-col">
-      <div class="card">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:0">
+      <div class="card" style="margin-top:0">
         <div class="card-header"><div class="card-title">⚙️ Processos em andamento</div></div>
-        <table><thead><tr><th>Razão Social</th><th>Tipo</th><th>Órgão</th><th>Status</th></tr></thead><tbody id="dash-processos"></tbody></table>
+        <table><thead><tr><th>Cliente</th><th>Tipo</th><th>Pend.</th><th>Status</th></tr></thead><tbody id="dash-processos"></tbody></table>
       </div>
-      <div class="card">
-        <div class="card-header"><div class="card-title">⚠️ Licenças próximas do vencimento</div></div>
-        <table><thead><tr><th>Razão Social</th><th>Tipo</th><th>Validade</th><th>Situação</th></tr></thead><tbody id="dash-licencas"></tbody></table>
+      <div class="card" style="margin-top:0">
+        <div class="card-header"><div class="card-title">📌 Condicionantes a vencer (≤45d)</div></div>
+        <table><thead><tr><th>Empresa</th><th>Condicionante</th><th>Prazo</th><th>Dias</th></tr></thead><tbody id="dash-condicionantes"></tbody></table>
       </div>
-    </div>
-    <div class="card" style="margin-top:0">
-      <div class="card-header"><div class="card-title">📌 Condicionantes próximas do vencimento (≤ 45 dias)</div></div>
-      <table><thead><tr><th>Empresa</th><th>Condicionante</th><th>Prazo</th><th>Dias</th></tr></thead><tbody id="dash-condicionantes"></tbody></table>
+      <div class="card" style="margin-top:0">
+        <div class="card-header"><div class="card-title">⚠️ Licenças a vencer</div></div>
+        <table><thead><tr><th>Razão Social</th><th>Tipo</th><th>Validade</th><th>Sit.</th></tr></thead><tbody id="dash-licencas"></tbody></table>
+      </div>
     </div>
   </div>
 
@@ -715,8 +730,11 @@ function fazerLogout() {
   <!-- PROCESSOS EM ANDAMENTO -->
   <div class="page" id="page-processos">
     <div class="topbar">
-      <div><h2>Processos em Andamento</h2><div class="topbar-sub" id="processos-count">—</div></div>
-      <button class="btn btn-primary" onclick="abrirModalProcesso()">＋ Novo processo</button>
+      <div><h2>Processos</h2><div class="topbar-sub" id="processos-count">—</div></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-secondary" onclick="abrirModalModelosChecklist()">📋 Modelos de Checklist</button>
+        <button class="btn btn-primary" onclick="abrirModalProcesso()">＋ Novo Processo</button>
+      </div>
     </div>
     <div class="card">
       <div class="search-bar">
@@ -726,17 +744,20 @@ function fazerLogout() {
         </select>
         <select id="filter-proc-status" onchange="renderProcessos()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
           <option value="">Todos os status</option>
-          <option value="Análise técnica">Análise técnica</option>
-          <option value="Anotação">Anotação</option>
-          <option value="Arquivado">Arquivado</option>
-          <option value="Emissão de Licença">Emissão de Licença</option>
-          <option value="Finalizado">Finalizado</option>
-          <option value="Licença emitida">Licença emitida</option>
-          <option value="Pedido Protocolado">Pedido Protocolado</option>
-          <option value="Providências">Providências</option>
+          <option value="Em andamento">🔵 Em andamento</option>
+          <option value="Finalizado">✅ Finalizado</option>
+          <option value="Abandonado">🚫 Abandonado</option>
+          <option value="Arquivado">📦 Arquivado</option>
+        </select>
+        <select id="filter-proc-pend" onchange="renderProcessos()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
+          <option value="">Todas as pendências</option>
+          <option value="PC">PC — Cliente</option>
+          <option value="PI">PI — Interna</option>
+          <option value="PO">PO — Órgão</option>
+          <option value="sem">Sem pendência</option>
         </select>
         <select id="sort-processos" onchange="renderProcessos()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
-          <option value="az" selected>A → Z (razão social)</option>
+          <option value="az" selected>A → Z (cliente)</option>
           <option value="recente">Mais recentes</option>
           <option value="atualizacao">Última atualização</option>
         </select>
@@ -745,15 +766,17 @@ function fazerLogout() {
         <table>
           <thead>
             <tr>
-              <th>Razão Social</th>
-              <th>Tipo de Licença</th>
+              <th>Cliente</th>
+              <th>Licença</th>
               <th>Órgão</th>
               <th>Solicitação</th>
               <th>Protocolo</th>
-              <th>Data de Atualização</th>
+              <th>Vencimento</th>
+              <th>Atualização</th>
               <th>Setor</th>
+              <th>Pend.</th>
               <th>Status</th>
-              <th>Observação</th>
+              <th>Obs.</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -963,6 +986,121 @@ function fazerLogout() {
     </div>
   </div>
 
+<!-- ══ PROSPECÇÃO ══ -->
+<div class="page" id="page-prospeccao">
+  <div class="topbar">
+    <div><h2>Prospecção</h2><div class="topbar-sub" id="prosp-count">—</div></div>
+    <button class="btn btn-primary" onclick="abrirModalProsp()">＋ Novo lead</button>
+  </div>
+  <div class="card">
+    <div class="search-bar">
+      <div class="search-wrap"><input type="text" id="search-prosp" placeholder="Buscar por nome, CNPJ, e-mail, cidade..." oninput="renderProspeccao()"><button class="btn-clear-search" onclick="document.getElementById('search-prosp').value='';renderProspeccao()" title="Limpar">✕</button></div>
+      <select id="filter-prosp-status" onchange="renderProspeccao()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
+        <option value="">Todos os status</option>
+        <option value="novo">🆕 Novo</option>
+        <option value="em_contato">📞 Em contato</option>
+        <option value="negociando">🤝 Negociando</option>
+        <option value="convertido">✅ Convertido</option>
+        <option value="descartado">❌ Descartado</option>
+      </select>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Nome / Empresa</th><th>CNPJ/CPF</th><th>Telefone</th><th>E-mail</th><th>Responsável</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="tbody-prospeccao"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONTATOS ══ -->
+<div class="page" id="page-contatos">
+  <div class="topbar">
+    <div><h2>Contatos</h2><div class="topbar-sub" id="contatos-count">—</div></div>
+    <button class="btn btn-primary" onclick="abrirModalContato()">＋ Novo contato</button>
+  </div>
+  <div class="card">
+    <div class="search-bar">
+      <div class="search-wrap"><input type="text" id="search-contatos" placeholder="Buscar por nome, telefone, e-mail..." oninput="renderContatos()"><button class="btn-clear-search" onclick="document.getElementById('search-contatos').value='';renderContatos()" title="Limpar">✕</button></div>
+      <select id="filter-cont-tipo" onchange="renderContatos()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
+        <option value="">Todos os tipos</option>
+        <option value="empresa">🏢 Empresa</option>
+        <option value="pessoa">👤 Pessoa Física</option>
+        <option value="profissional">💼 Profissional</option>
+      </select>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Nome</th><th>Tipo</th><th>Telefone</th><th>E-mail</th><th>Cidade/UF</th><th>Observação</th><th>Ações</th></tr></thead>
+        <tbody id="tbody-contatos"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PROPOSTAS ══ -->
+<div class="page" id="page-propostas">
+  <div class="topbar">
+    <div><h2>Propostas</h2><div class="topbar-sub" id="propostas-count">—</div></div>
+    <button class="btn btn-primary" onclick="abrirModalProposta()">＋ Nova proposta</button>
+  </div>
+  <div class="card">
+    <div class="search-bar">
+      <div class="search-wrap"><input type="text" id="search-propostas" placeholder="Buscar por cliente, descrição..." oninput="renderPropostas()"><button class="btn-clear-search" onclick="document.getElementById('search-propostas').value='';renderPropostas()" title="Limpar">✕</button></div>
+      <select id="filter-prop-status" onchange="renderPropostas()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
+        <option value="">Todos os status</option>
+        <option value="em_elaboracao">📝 Em elaboração</option>
+        <option value="enviada">📤 Enviada</option>
+        <option value="aprovada">✅ Aprovada</option>
+        <option value="recusada">❌ Recusada</option>
+        <option value="cancelada">🚫 Cancelada</option>
+      </select>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Cliente</th><th>Descrição</th><th>Valor</th><th>Data</th><th>Validade</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="tbody-propostas"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SESMT — CONTROLE DE EXAMES ══ -->
+<div class="page" id="page-sesmt">
+  <div class="topbar">
+    <div><h2>Controle de Exames (SESMT)</h2><div class="topbar-sub" id="sesmt-count">—</div></div>
+  </div>
+  <!-- Seletor de empresa -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><div class="card-title">🏢 Selecionar Empresa (Cliente)</div></div>
+    <div style="padding:16px 24px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <select id="sesmt-cli-select" onchange="selecionarEmpresaSesmt(this.value)" style="flex:1;min-width:200px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none">
+        <option value="">— Selecione um cliente —</option>
+      </select>
+      <button class="btn btn-primary" id="btn-novo-func" onclick="abrirModalFuncionario()" style="display:none">＋ Novo funcionário</button>
+    </div>
+  </div>
+  <!-- Tabela de funcionários -->
+  <div class="card" id="sesmt-func-card" style="display:none">
+    <div class="card-header">
+      <div class="card-title" id="sesmt-empresa-nome">Funcionários</div>
+      <div class="search-bar" style="border:none;padding:0;margin:0">
+        <div class="search-wrap" style="min-width:180px"><input type="text" id="search-func" placeholder="Buscar funcionário..." oninput="renderFuncionarios()"></div>
+        <select id="filter-func-status" onchange="renderFuncionarios()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
+          <option value="">Todos</option>
+          <option value="ativo">✅ Ativos</option>
+          <option value="inativo">❌ Inativos</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Status</th><th>Nome</th><th>Função</th><th>Admissão</th><th>Próx. vencimento</th><th>Ações</th></tr></thead>
+        <tbody id="tbody-funcionarios"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 </main>
 
 <!-- MODAL CADASTRO CLIENTE -->
@@ -1326,6 +1464,34 @@ let pagamentos = [];
 let editingClienteId = null;
 let editingPagamentoId = null;
 
+// Novos módulos
+let prospeccao = [];
+let contatos = [];
+let propostas = [];
+let sesmt = []; // [{clienteId, funcionarios:[...]}]
+let _sesmtEmpresaId = null;
+let _exameCount = 0;
+let _editIdProsp = null;
+let _editIdCont = null;
+let _editIdProp = null;
+let _editIdFunc = null;
+
+const PROSP_STATUS = {
+  novo:       { label: '🆕 Novo',         cls: 'badge-green' },
+  em_contato: { label: '📞 Em contato',   cls: 'badge-amber' },
+  negociando: { label: '🤝 Negociando',   cls: 'badge-amber' },
+  convertido: { label: '✅ Convertido',   cls: 'badge-green' },
+  descartado: { label: '❌ Descartado',   cls: 'badge-red' }
+};
+const PROP_STATUS = {
+  em_elaboracao: { label: '📝 Em elaboração', cls: 'badge-amber' },
+  enviada:       { label: '📤 Enviada',       cls: 'badge-green' },
+  aprovada:      { label: '✅ Aprovada',      cls: 'badge-green' },
+  recusada:      { label: '❌ Recusada',      cls: 'badge-red' },
+  cancelada:     { label: '🚫 Cancelada',     cls: 'badge-red' }
+};
+const TIPOS_EXAME = ['Admissional','Demissional','Mudança de Função/Risco','Periódico','Retorno ao Trabalho'];
+
 // ── Helpers Firebase ────────────────────────────────────────────
 function _fbUid() { return window._fbUserId || 'local'; }
 function _fbCol(nome) {
@@ -1362,7 +1528,7 @@ window._fbInitData = function() {
   var uid = window._fbUserId;
   var base = function(nome) { return collection(db, 'usuarios', uid, nome); };
   var prontos = 0;
-  var totalCols = 9;
+  var totalCols = 13;
   var iniciado = false;
 
   function onPrimeiraLeitura() {
@@ -1381,6 +1547,10 @@ window._fbInitData = function() {
     renderCte();
     renderIbama();
     renderExtrasNav();
+    renderProspeccao();
+    renderContatos();
+    renderPropostas();
+    renderSesmtSelect();
     verificarAlertasAbertura();
     verificarLembreteBackup();
     // Migração automática de setores para siglas maiúsculas
@@ -1434,6 +1604,26 @@ window._fbInitData = function() {
   onSnapshot(base('outroSistemas'), function(snap) {
     outroSistemas = snap.docs.map(function(d) { return d.data(); });
     if (!iniciado) { onPrimeiraLeitura(); } else { renderExtrasNav(); }
+  });
+
+  onSnapshot(base('prospeccao'), function(snap) {
+    prospeccao = snap.docs.map(function(d) { return d.data(); });
+    if (!iniciado) { onPrimeiraLeitura(); } else { renderProspeccao(); }
+  });
+
+  onSnapshot(base('contatos'), function(snap) {
+    contatos = snap.docs.map(function(d) { return d.data(); });
+    if (!iniciado) { onPrimeiraLeitura(); } else { renderContatos(); }
+  });
+
+  onSnapshot(base('propostas'), function(snap) {
+    propostas = snap.docs.map(function(d) { return d.data(); });
+    if (!iniciado) { onPrimeiraLeitura(); } else { renderPropostas(); }
+  });
+
+  onSnapshot(base('sesmt'), function(snap) {
+    sesmt = snap.docs.map(function(d) { return d.data(); });
+    if (!iniciado) { onPrimeiraLeitura(); } else { renderSesmtSelect(); if (_sesmtEmpresaId) renderFuncionarios(); }
   });
 };
 
@@ -1651,6 +1841,10 @@ function navigate(page) {
   if (page === 'licencas') renderLicencas();
   if (page === 'condicionantes') renderCondicionantesMod();
   if (page === 'processos') renderProcessos();
+  if (page === 'prospeccao') renderProspeccao();
+  if (page === 'contatos') renderContatos();
+  if (page === 'propostas') renderPropostas();
+  if (page === 'sesmt') renderSesmtSelect();
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); clearDirty(id); }
@@ -2293,43 +2487,22 @@ function renderDashboard() {
     '<div class="stat-card"><div class="stat-label">Licenças vencidas</div><div class="stat-value" style="' + (licVencidas>0?'color:var(--red)':'') + '">' + licVencidas + '</div><div class="stat-hint">Fora do prazo</div></div>' +
     '<div class="stat-card"><div class="stat-label">Clientes</div><div class="stat-value">' + totalClientes + '</div><div class="stat-hint">Cadastrados</div></div>';
 
-  // Processos em andamento (A-Z)
+  // Processos em andamento (apenas status "Em andamento", A-Z)
   var dp = document.getElementById('dash-processos');
-  var procs = processos.slice().sort(function(a,b){
-    return (a.razao_social||'').localeCompare(b.razao_social||'','pt-BR');
-  });
-  if (dp) dp.innerHTML = procs.length
-    ? procs.map(function(p){
-        var badge = STATUS_PROC_BADGE[p.status] || 'background:#f0f0f0;color:#555';
+  var procsAndamento = processos.filter(function(p){ return p.status === 'Em andamento'; })
+    .slice().sort(function(a,b){ return (a.razao_social||'').localeCompare(b.razao_social||'','pt-BR'); });
+  if (dp) dp.innerHTML = procsAndamento.length
+    ? procsAndamento.map(function(p){
+        var pend = p.pendencia || '';
+        var pendCls = !pend ? 'pend-none' : pend==='PC'?'pend-pc':pend==='PI'?'pend-pi':'pend-po';
         return '<tr>'
-          + '<td style="font-weight:500">' + (p.razao_social||'—') + '</td>'
+          + '<td style="font-weight:500;font-size:12px;max-width:100px;white-space:normal;line-height:1.3">' + (p.razao_social||'—') + '</td>'
           + '<td style="font-size:12px;font-weight:600">' + siglaLicenca(p.tipo) + '</td>'
-          + '<td style="font-size:12px">' + (p.orgao||'—') + '</td>'
-          + '<td><span class="badge" style="' + badge + ';font-size:11px">' + (p.status||'—') + '</span></td>'
+          + '<td><span class="pendencia-badge '+pendCls+'" style="cursor:pointer" onclick="abrirModalDefinirPendencia(\''+p.id+'\')" title="Clique para definir pendência">' + (pend||'—') + '</span></td>'
+          + '<td><span class="badge" style="background:#e6f1fb;color:#185fa5;font-size:11px">Em andamento</span></td>'
           + '</tr>';
       }).join('')
-    : '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhum processo cadastrado</td></tr>';
-
-  // Licenças próximas do vencimento (ordenadas pela validade)
-  var dl = document.getElementById('dash-licencas');
-  var alertas = licencas.filter(function(l){
-    var s = calcSituacao(l.validade, l.situacao_especial);
-    return s === 'PRÓXIMA DO VENCIMENTO' || s === 'LICENÇA VENCIDA';
-  }).sort(function(a,b){
-    return (a.validade||'').localeCompare(b.validade||'');
-  });
-  if (dl) dl.innerHTML = alertas.length
-    ? alertas.map(function(l){
-        var sit   = calcSituacao(l.validade, l.situacao_especial);
-        var badge = SITUACAO_BADGE[sit] || 'background:#f0f0f0;color:#555';
-        return '<tr>'
-          + '<td style="font-weight:500">' + (l.razao_social||'—') + '</td>'
-          + '<td style="font-size:12px;font-weight:600">' + siglaLicenca(l.tipo) + '</td>'
-          + '<td style="font-size:12px;font-weight:600">' + fmtDate(l.validade) + '</td>'
-          + '<td><span class="badge" style="' + badge + ';font-size:11px">' + sit + '</span></td>'
-          + '</tr>';
-      }).join('')
-    : '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma licença próxima do vencimento</td></tr>';
+    : '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhum processo em andamento</td></tr>';
 
   // Condicionantes próximas do vencimento (≤45 dias)
   var dc = document.getElementById('dash-condicionantes');
@@ -2351,14 +2524,35 @@ function renderDashboard() {
       ? condAlerts.map(function(c){
           var cor = c.dias <= 15 ? 'background:#fce8e8;color:#c1666b' : 'background:#fdf3d0;color:#8a6200';
           return '<tr>'
-            + '<td style="font-weight:500">' + c.empresa + '</td>'
-            + '<td style="font-size:12px">' + c.descricao + '</td>'
-            + '<td style="font-size:12px;font-weight:600">' + fmtDate(c.prazo) + '</td>'
+            + '<td style="font-weight:500;font-size:12px;max-width:90px;white-space:normal;line-height:1.3">' + c.empresa + '</td>'
+            + '<td style="font-size:12px;max-width:120px;white-space:normal;line-height:1.3">' + c.descricao + '</td>'
+            + '<td style="font-size:12px;font-weight:600;white-space:nowrap">' + fmtDate(c.prazo) + '</td>'
             + '<td><span class="badge" style="' + cor + ';font-size:11px">' + c.dias + 'd</span></td>'
             + '</tr>';
         }).join('')
       : '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma condicionante próxima do vencimento</td></tr>';
   }
+
+  // Licenças próximas do vencimento (ordenadas pela validade)
+  var dl = document.getElementById('dash-licencas');
+  var alertas = licencas.filter(function(l){
+    var s = calcSituacao(l.validade, l.situacao_especial);
+    return s === 'PRÓXIMA DO VENCIMENTO' || s === 'LICENÇA VENCIDA';
+  }).sort(function(a,b){
+    return (a.validade||'').localeCompare(b.validade||'');
+  });
+  if (dl) dl.innerHTML = alertas.length
+    ? alertas.map(function(l){
+        var sit   = calcSituacao(l.validade, l.situacao_especial);
+        var badge = SITUACAO_BADGE[sit] || 'background:#f0f0f0;color:#555';
+        return '<tr>'
+          + '<td style="font-weight:500;font-size:12px;max-width:100px;white-space:normal;line-height:1.3">' + (l.razao_social||'—') + '</td>'
+          + '<td style="font-size:12px;font-weight:600">' + siglaLicenca(l.tipo) + '</td>'
+          + '<td style="font-size:12px;font-weight:600;white-space:nowrap">' + fmtDate(l.validade) + '</td>'
+          + '<td><span class="badge" style="' + badge + ';font-size:11px">' + sit + '</span></td>'
+          + '</tr>';
+      }).join('')
+    : '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma licença próxima do vencimento</td></tr>';
 }
 
 function toggleOutroTipoProc() {
@@ -3673,14 +3867,10 @@ var processoEditId = null;
 async function saveProcessos() { for (const item of processos) await _fbSaveDoc('processos', item.id, item); }
 
 var STATUS_PROC_BADGE = {
-  'Análise técnica':   'background:#d8f3dc;color:#2d6a4f',
-  'Anotação':          'background:#e6f1fb;color:#185fa5',
-  'Arquivado':         'background:#f0f0f0;color:#555',
-  'Emissão de Licença':'background:#fdf3d0;color:#8a6200',
-  'Finalizado':        'background:#1a3a2a;color:#d8f3dc',
-  'Licença emitida':   'background:#d8f3dc;color:#1a3a2a',
-  'Pedido Protocolado':'background:#fff0e0;color:#b05a00',
-  'Providências':      'background:#fce8e8;color:#c1666b'
+  'Em andamento':  'background:#e6f1fb;color:#185fa5',
+  'Finalizado':    'background:#d8f3dc;color:#1a3a2a',
+  'Abandonado':    'background:#fce8e8;color:#c1666b',
+  'Arquivado':     'background:#f0f0f0;color:#555'
 };
 
 function abrirModalProcesso(id) {
@@ -3714,11 +3904,66 @@ function abrirModalProcesso(id) {
   document.getElementById('pr-orgao').value       = p ? (p.orgao||'')       : '';
   document.getElementById('pr-solicitacao').value = p ? (p.solicitacao||'') : '';
   document.getElementById('pr-protocolo').value   = p ? (p.protocolo||'')   : '';
+  document.getElementById('pr-abertura').value    = p ? (p.abertura||'')    : '';
+  document.getElementById('pr-vencimento').value  = p ? (p.vencimento||'')  : '';
   document.getElementById('pr-atualizacao').value = p ? (p.atualizacao||'') : '';
   document.getElementById('pr-setor').value       = p ? (p.setor||'')       : '';
-  document.getElementById('pr-status').value      = p ? (p.status||'Análise técnica') : 'Análise técnica';
+  document.getElementById('pr-pendencia').value   = p ? (p.pendencia||'')   : '';
+  document.getElementById('pr-status').value      = p ? (p.status||'Em andamento') : 'Em andamento';
   document.getElementById('pr-obs').value         = p ? (p.obs||'')         : '';
+  // Carrega checklist
+  renderChecklistModal(p ? (p.checklist||[]) : []);
   clearDirty('modal-processo'); document.getElementById('modal-processo').classList.add('open');
+}
+
+// ── CHECKLIST DE PROCESSOS ────────────────────────────
+var _checklistItems = [];
+
+function renderChecklistModal(items) {
+  _checklistItems = (items || []).map(function(i){ return Object.assign({},i); });
+  atualizarChecklistUI();
+}
+
+function adicionarItemChecklist() {
+  var inp = document.getElementById('pr-checklist-novo');
+  var txt = (inp.value||'').trim();
+  if (!txt) return;
+  _checklistItems.push({ id: genId(), texto: txt, concluido: false });
+  inp.value = '';
+  atualizarChecklistUI();
+}
+
+function toggleItemChecklist(id) {
+  _checklistItems = _checklistItems.map(function(i){
+    return i.id === id ? Object.assign({},i,{concluido:!i.concluido}) : i;
+  });
+  atualizarChecklistUI();
+}
+
+function removerItemChecklist(id) {
+  _checklistItems = _checklistItems.filter(function(i){ return i.id !== id; });
+  atualizarChecklistUI();
+}
+
+function atualizarChecklistUI() {
+  var lista = document.getElementById('pr-checklist-lista');
+  var vazio = document.getElementById('pr-checklist-vazio');
+  var prog  = document.getElementById('pr-checklist-prog');
+  var label = document.getElementById('pr-checklist-label');
+  if (!lista) return;
+  var concluidas = _checklistItems.filter(function(i){ return i.concluido; }).length;
+  var total = _checklistItems.length;
+  var pct = total > 0 ? Math.round(concluidas/total*100) : 0;
+  if (prog)  prog.style.width  = pct + '%';
+  if (label) label.textContent = concluidas + ' de ' + total + ' itens concluídos (' + pct + '%)';
+  if (vazio) vazio.style.display = total === 0 ? 'block' : 'none';
+  lista.innerHTML = _checklistItems.map(function(i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">'
+      + '<input type="checkbox"' + (i.concluido?' checked':'') + ' style="width:15px;height:15px;cursor:pointer;accent-color:var(--green-mid);flex-shrink:0" onchange="toggleItemChecklist(\''+i.id+'\')">'
+      + '<span style="flex:1;font-size:13px;' + (i.concluido?'text-decoration:line-through;color:var(--text-muted)':'') + '">'+(i.texto||'')+'</span>'
+      + '<button onclick="removerItemChecklist(\''+i.id+'\')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:0 4px;line-height:1" title="Remover">✕</button>'
+      + '</div>';
+  }).join('');
 }
 
 function salvarProcesso() {
@@ -3737,10 +3982,14 @@ function salvarProcesso() {
     orgao:        orgao,
     solicitacao:  document.getElementById('pr-solicitacao').value.trim(),
     protocolo:    document.getElementById('pr-protocolo').value.trim(),
+    abertura:     document.getElementById('pr-abertura').value,
+    vencimento:   document.getElementById('pr-vencimento').value,
     atualizacao:  document.getElementById('pr-atualizacao').value,
     setor:        document.getElementById('pr-setor').value.trim(),
+    pendencia:    document.getElementById('pr-pendencia').value,
     status:       document.getElementById('pr-status').value,
     obs:          document.getElementById('pr-obs').value.trim(),
+    checklist:    _checklistItems.slice(),
     createdAt:    existing ? existing.createdAt : new Date().toISOString()
   };
 
@@ -3782,19 +4031,23 @@ function siglaLicenca(tipo) {
 
 function renderProcessos() {
   renderFiltroOrgaoProcessos();
-  var q       = (document.getElementById('search-processos')||{value:''}).value.toLowerCase();
-  var filtOrg = (document.getElementById('filter-proc-orgao')||{value:''}).value;
-  var filtSt  = (document.getElementById('filter-proc-status')||{value:''}).value;
-  var ordem   = (document.getElementById('sort-processos')||{value:'az'}).value;
+  var q        = (document.getElementById('search-processos')||{value:''}).value.toLowerCase();
+  var filtOrg  = (document.getElementById('filter-proc-orgao')||{value:''}).value;
+  var filtSt   = (document.getElementById('filter-proc-status')||{value:''}).value;
+  var filtPend = (document.getElementById('filter-proc-pend')||{value:''}).value;
+  var ordem    = (document.getElementById('sort-processos')||{value:'az'}).value;
 
   var filtered = processos.filter(function(p){
-    if (filtOrg && p.orgao  !== filtOrg) return false;
-    if (filtSt  && p.status !== filtSt)  return false;
+    if (filtOrg  && p.orgao  !== filtOrg)  return false;
+    if (filtSt   && p.status !== filtSt)   return false;
+    if (filtPend === 'sem' && p.pendencia)  return false;
+    if (filtPend && filtPend !== 'sem' && p.pendencia !== filtPend) return false;
     if (!q) return true;
     return (p.razao_social||'').toLowerCase().indexOf(q) !== -1
         || (p.solicitacao||'').toLowerCase().indexOf(q)  !== -1
         || (p.protocolo||'').toLowerCase().indexOf(q)    !== -1
-        || (p.setor||'').toLowerCase().indexOf(q)         !== -1;
+        || (p.orgao||'').toLowerCase().indexOf(q)        !== -1
+        || (p.setor||'').toLowerCase().indexOf(q)        !== -1;
   });
 
   if (ordem === 'az') {
@@ -3804,15 +4057,15 @@ function renderProcessos() {
   }
 
   var countEl = document.getElementById('processos-count');
-  if (countEl) countEl.textContent = filtered.length + ' processo' + (filtered.length!==1?'s':'') + ' encontrado' + (filtered.length!==1?'s':'');
+  if (countEl) countEl.textContent = filtered.length + ' processo' + (filtered.length!==1?'s':'');
 
   var tbody = document.getElementById('tbody-processos');
   if (!tbody) return;
 
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">⚙️</div>'
+    tbody.innerHTML = '<tr><td colspan="13"><div class="empty-state"><div class="empty-icon">⚙️</div>'
       + '<strong>Nenhum processo encontrado</strong>'
-      + '<p style="margin-top:6px;font-size:14px">' + (q||filtOrg||filtSt?'Tente outros filtros':'Clique em "+ Novo processo" para cadastrar') + '</p>'
+      + '<p style="margin-top:6px;font-size:14px">' + (q||filtOrg||filtSt||filtPend?'Tente outros filtros':'Clique em \"+ Novo Processo\" para cadastrar') + '</p>'
       + '</div></td></tr>';
     return;
   }
@@ -3820,21 +4073,33 @@ function renderProcessos() {
   var html = '';
   filtered.forEach(function(p){
     var badge = STATUS_PROC_BADGE[p.status] || 'background:#f0f0f0;color:#555';
+    // Pendência badge clicável (igual Sistema Jeff)
+    var pend = p.pendencia || '';
+    var pendHtml;
+    if (!pend) {
+      pendHtml = '<span class="pendencia-badge pend-none" title="Clique para definir pendência" style="cursor:pointer" onclick="abrirModalDefinirPendencia(\''+p.id+'\')">—</span>';
+    } else {
+      var pendCls = pend==='PC'?'pend-pc':pend==='PI'?'pend-pi':'pend-po';
+      var pendTip = pend==='PC'?'Pendência do Cliente':pend==='PI'?'Pendência Interna':'Pendência do Órgão';
+      pendHtml = '<span class="pendencia-badge '+pendCls+'" title="'+pendTip+' — clique para alterar" style="cursor:pointer" onclick="abrirModalDefinirPendencia(\''+p.id+'\')">'+pend+'</span>';
+    }
     html += '<tr>'
-      + '<td><div style="font-weight:500">' + (p.razao_social||'—') + '</div></td>'
-      + '<td style="font-weight:600;font-size:13px">' + siglaLicenca(p.tipo) + '</td>'
-      + '<td style="font-size:13px">' + (p.orgao||'—') + '</td>'
-      + '<td style="font-family:monospace;font-size:13px">' + (p.solicitacao||'—') + '</td>'
-      + '<td style="font-family:monospace;font-size:13px">' + (p.protocolo||'—') + '</td>'
-      + '<td style="font-size:13px">' + fmtDate(p.atualizacao) + '</td>'
-      + '<td style="font-size:13px;font-weight:500">' + (p.setor||'—') + '</td>'
-      + '<td><span class="badge" style="' + badge + '">' + (p.status||'—') + '</span></td>'
-      + '<td style="font-size:12px;color:var(--text-muted);max-width:120px">'
-      + (p.obs ? '<div class="tooltip-wrap"><span style="cursor:help">' + p.obs.slice(0,30) + (p.obs.length>30?'…':'') + '</span><div class="tooltip-box">' + p.obs + '</div></div>' : '—')
+      + '<td style="font-weight:500;min-width:140px;white-space:normal;line-height:1.3">' + (p.razao_social||'—') + '</td>'
+      + '<td style="font-weight:600;font-size:12px">' + siglaLicenca(p.tipo) + '</td>'
+      + '<td style="font-size:12px">' + (p.orgao||'—') + '</td>'
+      + '<td style="font-family:monospace;font-size:12px">' + (p.solicitacao||'—') + '</td>'
+      + '<td style="font-family:monospace;font-size:12px">' + (p.protocolo||'—') + '</td>'
+      + '<td style="font-size:12px">' + fmtDate(p.vencimento) + '</td>'
+      + '<td style="font-size:12px">' + fmtDate(p.atualizacao) + '</td>'
+      + '<td style="font-size:12px">' + (p.setor||'—') + '</td>'
+      + '<td>' + pendHtml + '</td>'
+      + '<td><span class="badge" style="font-size:11px;white-space:nowrap;'+badge+'">' + (p.status||'—') + '</span></td>'
+      + '<td style="font-size:12px;color:var(--text-muted);max-width:100px">'
+      + (p.obs ? '<div class="tooltip-wrap"><span style="cursor:help">' + p.obs.slice(0,22) + (p.obs.length>22?'…':'') + '</span><div class="tooltip-box">' + p.obs + '</div></div>' : '—')
       + '</td>'
-      + '<td><div style="display:flex;gap:5px">'
-      + '<button class="btn btn-xs btn-secondary" onclick="abrirModalProcesso(\'' + p.id + '\')">✏ Editar</button>'
-      + '<button class="btn btn-xs btn-danger" onclick="excluirProcesso(\'' + p.id + '\')">✕</button>'
+      + '<td><div style="display:flex;gap:4px">'
+      + '<button class="btn btn-xs btn-secondary" onclick="abrirModalProcesso(\'' + p.id + '\')" title="Editar">✏</button>'
+      + '<button class="btn btn-xs btn-danger" onclick="excluirProcesso(\'' + p.id + '\')" title="Excluir">✕</button>'
       + '</div></td>'
       + '</tr>';
   });
@@ -5986,10 +6251,695 @@ async function googleDispararAlertas(forcar) {
   }
 }
 
+// ══════════════════════════════════════════════════════
+// DEFINIR PENDÊNCIA (clique direto na tabela)
+// ══════════════════════════════════════════════════════
+var _pendenciaProcessoId = null;
+
+function abrirModalDefinirPendencia(id) {
+  _pendenciaProcessoId = id;
+  document.getElementById('modal-definir-pendencia').classList.add('open');
+}
+
+async function definirPendencia(valor) {
+  if (!_pendenciaProcessoId) return;
+  var p = processos.find(function(x){ return x.id === _pendenciaProcessoId; });
+  if (!p) return;
+  p.pendencia = valor;
+  await _fbSaveDoc('processos', p.id, p);
+  closeModal('modal-definir-pendencia');
+  renderProcessos();
+  var msg = valor ? ('✓ Pendência definida: ' + valor) : '✓ Pendência removida';
+  toast(msg);
+}
+
+// ══════════════════════════════════════════════════════
+// MODELOS DE CHECKLIST
+// ══════════════════════════════════════════════════════
+var _modelosChecklist = JSON.parse(localStorage.getItem('eng_modelos_checklist') || '[]');
+var _editandoModeloId = null;
+
+function salvarModelosStorage() {
+  localStorage.setItem('eng_modelos_checklist', JSON.stringify(_modelosChecklist));
+}
+
+function abrirModalModelosChecklist() {
+  switchTabModelo('aplicar');
+  renderModelosAplicar();
+  renderModelosGerenciar();
+  document.getElementById('modal-modelos-checklist').classList.add('open');
+}
+
+function abrirAplicarModelo() {
+  abrirModalModelosChecklist();
+}
+
+function switchTabModelo(tab) {
+  var isAplicar = tab === 'aplicar';
+  document.getElementById('tab-aplicar').style.display     = isAplicar ? 'block' : 'none';
+  document.getElementById('tab-gerenciar').style.display   = isAplicar ? 'none' : 'block';
+  document.getElementById('tab-aplicar-btn').style.cssText   = 'padding:12px 16px;border:none;background:none;font-family:inherit;font-size:14px;font-weight:'+(isAplicar?'600':'500')+';cursor:pointer;border-bottom:2px solid '+(isAplicar?'var(--green-mid)':'transparent')+';margin-bottom:-2px;color:'+(isAplicar?'var(--green-mid)':'var(--text-muted)');
+  document.getElementById('tab-gerenciar-btn').style.cssText = 'padding:12px 16px;border:none;background:none;font-family:inherit;font-size:14px;font-weight:'+(!isAplicar?'600':'500')+';cursor:pointer;border-bottom:2px solid '+(!isAplicar?'var(--green-mid)':'transparent')+';margin-bottom:-2px;color:'+(!isAplicar?'var(--green-mid)':'var(--text-muted)');
+}
+
+function renderModelosAplicar() {
+  var cont = document.getElementById('modelos-lista-aplicar');
+  if (!cont) return;
+  if (!_modelosChecklist.length) {
+    cont.innerHTML = '<div class="empty-state" style="padding:32px"><div class="empty-icon">📋</div><span style="font-size:13px">Nenhum modelo cadastrado ainda.<br>Use a aba "Gerenciar Modelos" para criar.</span></div>';
+    return;
+  }
+  cont.innerHTML = _modelosChecklist.map(function(m){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--surface2);border-radius:10px;margin-bottom:10px">'
+      + '<div>'
+      + '<div style="font-weight:600;font-size:14px">'+(m.nome||'Sem nome')+'</div>'
+      + '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+(m.itens||[]).length+' item(s)</div>'
+      + '</div>'
+      + '<button class="btn btn-primary btn-sm" onclick="aplicarModelo(\''+m.id+'\')">Aplicar</button>'
+      + '</div>';
+  }).join('');
+}
+
+function renderModelosGerenciar() {
+  var cont = document.getElementById('modelos-lista-gerenciar');
+  if (!cont) return;
+  if (!_modelosChecklist.length) {
+    cont.innerHTML = '<div class="empty-state" style="padding:32px"><div class="empty-icon">📋</div><span style="font-size:13px">Nenhum modelo cadastrado.</span></div>';
+    return;
+  }
+  cont.innerHTML = _modelosChecklist.map(function(m){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface2);border-radius:10px;margin-bottom:8px">'
+      + '<div>'
+      + '<div style="font-weight:600;font-size:14px">'+(m.nome||'Sem nome')+'</div>'
+      + '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+(m.itens||[]).length+' item(s)</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:6px">'
+      + '<button class="btn btn-xs btn-secondary" onclick="abrirEditarModelo(\''+m.id+'\')">✏ Editar</button>'
+      + '<button class="btn btn-xs btn-danger" onclick="excluirModelo(\''+m.id+'\')">✕</button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function criarModelo() {
+  var nome = (document.getElementById('novo-modelo-nome').value||'').trim();
+  if (!nome) { toast('⚠ Informe o nome do modelo'); return; }
+  var m = { id: genId(), nome: nome, itens: [] };
+  _modelosChecklist.push(m);
+  salvarModelosStorage();
+  document.getElementById('novo-modelo-nome').value = '';
+  renderModelosGerenciar();
+  renderModelosAplicar();
+  toast('✓ Modelo "'+nome+'" criado');
+  abrirEditarModelo(m.id);
+}
+
+function excluirModelo(id) {
+  if (!confirm('Excluir este modelo?')) return;
+  _modelosChecklist = _modelosChecklist.filter(function(m){ return m.id!==id; });
+  salvarModelosStorage();
+  renderModelosGerenciar();
+  renderModelosAplicar();
+  toast('Modelo removido');
+}
+
+function aplicarModelo(id) {
+  var m = _modelosChecklist.find(function(x){ return x.id===id; });
+  if (!m) return;
+  (m.itens||[]).forEach(function(txt){
+    _checklistItems.push({ id: genId(), texto: txt, concluido: false });
+  });
+  atualizarChecklistUI();
+  closeModal('modal-modelos-checklist');
+  toast('✓ Modelo "'+m.nome+'" aplicado ('+m.itens.length+' itens)');
+}
+
+function abrirEditarModelo(id) {
+  _editandoModeloId = id;
+  var m = _modelosChecklist.find(function(x){ return x.id===id; });
+  if (!m) return;
+  document.getElementById('modal-editar-modelo-title').textContent = 'Editar: '+m.nome;
+  document.getElementById('editar-modelo-nome').value = m.nome;
+  renderItensModelo(m.itens||[]);
+  document.getElementById('modal-editar-modelo').classList.add('open');
+}
+
+function renderItensModelo(itens) {
+  var cont  = document.getElementById('editar-modelo-itens');
+  var vazio = document.getElementById('editar-modelo-vazio');
+  if (!cont) return;
+  if (vazio) vazio.style.display = itens.length ? 'none' : 'block';
+  cont.innerHTML = itens.map(function(txt, idx){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">'
+      + '<span style="flex:1;font-size:13px">'+txt+'</span>'
+      + '<button onclick="removerItemModelo('+idx+')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:0 4px;line-height:1">✕</button>'
+      + '</div>';
+  }).join('');
+}
+
+function adicionarItemModelo() {
+  var inp = document.getElementById('editar-modelo-novo-item');
+  var txt = (inp.value||'').trim();
+  if (!txt) return;
+  var m = _modelosChecklist.find(function(x){ return x.id===_editandoModeloId; });
+  if (!m) return;
+  m.itens = m.itens || [];
+  m.itens.push(txt);
+  inp.value = '';
+  renderItensModelo(m.itens);
+}
+
+function removerItemModelo(idx) {
+  var m = _modelosChecklist.find(function(x){ return x.id===_editandoModeloId; });
+  if (!m) return;
+  m.itens.splice(idx, 1);
+  renderItensModelo(m.itens);
+}
+
+function salvarModelo() {
+  var m = _modelosChecklist.find(function(x){ return x.id===_editandoModeloId; });
+  if (!m) return;
+  var nome = (document.getElementById('editar-modelo-nome').value||'').trim();
+  if (!nome) { toast('⚠ Informe o nome'); return; }
+  m.nome = nome;
+  salvarModelosStorage();
+  renderModelosGerenciar();
+  renderModelosAplicar();
+  closeModal('modal-editar-modelo');
+  toast('✓ Modelo salvo');
+}
+
 // Botao manual na sidebar
 function googleAlertaManual() {
   googleDispararAlertas(true);
 }
+
+// ══════════════════════════════════════════════════════
+// PROSPECÇÃO
+// ══════════════════════════════════════════════════════
+async function saveProspeccao() { for (const i of prospeccao) await _fbSaveDoc('prospeccao', i.id, i); }
+
+function abrirModalProsp(id) {
+  _editIdProsp = id || null;
+  var p = id ? prospeccao.find(function(x){ return x.id===id; }) : null;
+  document.getElementById('modal-prosp-title').textContent = id ? 'Editar Lead' : 'Novo Lead';
+  ['nome','cpfcnpj','fantasia','telefone','email','responsavel','cidade','obs'].forEach(function(k){
+    var el = document.getElementById('prosp-'+k);
+    if (el) el.value = p ? (p[k]||'') : '';
+  });
+  document.getElementById('prosp-status').value = p ? (p.status||'novo') : 'novo';
+  document.getElementById('modal-prospeccao').classList.add('open');
+}
+
+function salvarProspeccao() {
+  var nome = document.getElementById('prosp-nome').value.trim();
+  if (!nome) { toast('⚠ Informe o nome'); return; }
+  var obj = {
+    id:          _editIdProsp || genId(),
+    nome:        nome,
+    cpfcnpj:     document.getElementById('prosp-cpfcnpj').value.trim(),
+    fantasia:    document.getElementById('prosp-fantasia').value.trim(),
+    telefone:    document.getElementById('prosp-telefone').value.trim(),
+    email:       document.getElementById('prosp-email').value.trim(),
+    responsavel: document.getElementById('prosp-responsavel').value.trim(),
+    cidade:      document.getElementById('prosp-cidade').value.trim(),
+    status:      document.getElementById('prosp-status').value,
+    obs:         document.getElementById('prosp-obs').value.trim(),
+    criadoEm:    _editIdProsp ? (prospeccao.find(function(x){return x.id===_editIdProsp;})||{}).criadoEm||new Date().toISOString() : new Date().toISOString()
+  };
+  if (_editIdProsp) {
+    prospeccao = prospeccao.map(function(x){ return x.id===_editIdProsp?obj:x; });
+    toast('✓ Lead atualizado');
+  } else {
+    prospeccao.unshift(obj);
+    toast('✓ Lead adicionado');
+  }
+  saveProspeccao();
+  closeModal('modal-prospeccao');
+  renderProspeccao();
+}
+
+function excluirProspeccao(id) {
+  if (!confirm('Remover este lead?')) return;
+  prospeccao = prospeccao.filter(function(x){ return x.id!==id; });
+  _fbDeleteDoc('prospeccao', id);
+  renderProspeccao(); toast('Lead removido');
+}
+
+function converterParaCliente(id) {
+  var p = prospeccao.find(function(x){ return x.id===id; });
+  if (!p) return;
+  if (!confirm('Converter "'+p.nome+'" para cliente? Os dados serão copiados.')) return;
+  var obj = {
+    id: genId(), cpf_cnpj: p.cpfcnpj||'', nome_razao_social: p.nome||'',
+    nome_fantasia: p.fantasia||'', telefone: p.telefone||'', celular: '',
+    email: p.email||'', observacao: p.obs||'', createdAt: new Date().toISOString()
+  };
+  clientes.unshift(obj);
+  _fbSaveDoc('clientes', obj.id, obj);
+  prospeccao = prospeccao.map(function(x){ return x.id===id ? Object.assign({},x,{status:'convertido'}) : x; });
+  saveProspeccao(); renderProspeccao(); renderClientes();
+  toast('✓ Lead convertido para cliente');
+}
+
+function renderProspeccao() {
+  var q  = (document.getElementById('search-prosp')||{value:''}).value.toLowerCase();
+  var st = (document.getElementById('filter-prosp-status')||{value:''}).value;
+  var lista = prospeccao.filter(function(p){
+    var match = !q || (p.nome+p.cpfcnpj+p.email+p.cidade+p.responsavel+'').toLowerCase().includes(q);
+    return match && (!st || p.status===st);
+  });
+  var el = document.getElementById('prosp-count');
+  if (el) el.textContent = lista.length + ' lead(s)';
+  var tbody = document.getElementById('tbody-prospeccao');
+  if (!tbody) return;
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🎯</div><strong>Nenhum lead encontrado</strong></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = lista.map(function(p){
+    var s = PROSP_STATUS[p.status]||{label:p.status,cls:'badge-green'};
+    var jaCliente = clientes.some(function(c){ return c.cpf_cnpj && p.cpfcnpj && c.cpf_cnpj.replace(/\D/g,'')===(p.cpfcnpj||'').replace(/\D/g,''); });
+    return '<tr>'
+      +'<td><div style="font-weight:500">'+(p.nome||'—')+'</div><div style="font-size:12px;color:var(--text-muted)">'+(p.fantasia||'')+'</div></td>'
+      +'<td style="font-family:monospace;font-size:12px">'+(p.cpfcnpj||'—')+'</td>'
+      +'<td>'+(p.telefone||'—')+'</td>'
+      +'<td>'+(p.email?'<a href="mailto:'+p.email+'" style="color:var(--green-mid);font-size:13px">'+p.email+'</a>':'—')+'</td>'
+      +'<td style="font-size:13px">'+(p.responsavel||'—')+'</td>'
+      +'<td><span class="badge '+s.cls+'">'+s.label+'</span></td>'
+      +'<td><div style="display:flex;gap:4px;flex-wrap:wrap">'
+        +'<button class="btn btn-xs btn-secondary" onclick="abrirModalProsp(\''+p.id+'\')">✏</button>'
+        +(jaCliente?'<span class="badge badge-green" style="font-size:10px">✅ Cliente</span>':'<button class="btn btn-xs btn-primary" onclick="converterParaCliente(\''+p.id+'\')" title="Converter">👥</button>')
+        +'<button class="btn btn-xs btn-danger" onclick="excluirProspeccao(\''+p.id+'\')">✕</button>'
+      +'</div></td>'
+      +'</tr>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// CONTATOS
+// ══════════════════════════════════════════════════════
+async function saveContatos() { for (const i of contatos) await _fbSaveDoc('contatos', i.id, i); }
+
+function abrirModalContato(id) {
+  _editIdCont = id || null;
+  var c = id ? contatos.find(function(x){ return x.id===id; }) : null;
+  document.getElementById('modal-cont-title').textContent = id ? 'Editar Contato' : 'Novo Contato';
+  ['nome','fantasia','area','telefone','celular','email','cidade','obs'].forEach(function(k){
+    var el = document.getElementById('cont-'+k); if (el) el.value = c ? (c[k]||'') : '';
+  });
+  document.getElementById('cont-tipo').value = c ? (c.tipo||'empresa') : 'empresa';
+  document.getElementById('cont-uf').value = c ? (c.uf||'') : '';
+  alternarTipoContato();
+  document.getElementById('modal-contato').classList.add('open');
+}
+
+function alternarTipoContato() {
+  var tipo = document.getElementById('cont-tipo').value;
+  var fw = document.getElementById('cont-fantasia-wrap');
+  var aw = document.getElementById('cont-area-wrap');
+  if (fw) fw.style.display = tipo==='profissional' ? 'none' : '';
+  if (aw) aw.style.display = tipo==='profissional' ? '' : 'none';
+}
+
+function salvarContato() {
+  var nome = document.getElementById('cont-nome').value.trim();
+  if (!nome) { toast('⚠ Informe o nome'); return; }
+  var tipo = document.getElementById('cont-tipo').value;
+  var obj = {
+    id:       _editIdCont || genId(),
+    tipo:     tipo,
+    nome:     nome,
+    fantasia: document.getElementById('cont-fantasia').value.trim(),
+    area:     document.getElementById('cont-area').value.trim(),
+    telefone: document.getElementById('cont-telefone').value.trim(),
+    celular:  document.getElementById('cont-celular').value.trim(),
+    email:    document.getElementById('cont-email').value.trim(),
+    cidade:   document.getElementById('cont-cidade').value.trim(),
+    uf:       document.getElementById('cont-uf').value,
+    obs:      document.getElementById('cont-obs').value.trim(),
+    criadoEm: _editIdCont ? (contatos.find(function(x){return x.id===_editIdCont;})||{}).criadoEm||new Date().toISOString() : new Date().toISOString()
+  };
+  if (_editIdCont) {
+    contatos = contatos.map(function(x){ return x.id===_editIdCont?obj:x; });
+    toast('✓ Contato atualizado');
+  } else {
+    contatos.unshift(obj);
+    toast('✓ Contato cadastrado');
+  }
+  saveContatos();
+  closeModal('modal-contato');
+  renderContatos();
+}
+
+function excluirContato(id) {
+  if (!confirm('Remover este contato?')) return;
+  contatos = contatos.filter(function(x){ return x.id!==id; });
+  _fbDeleteDoc('contatos', id);
+  renderContatos(); toast('Contato removido');
+}
+
+var TIPO_CONT_LABEL = { empresa:'🏢 Empresa', pessoa:'👤 Pessoa Física', profissional:'💼 Profissional' };
+
+function renderContatos() {
+  var q  = (document.getElementById('search-contatos')||{value:''}).value.toLowerCase();
+  var tp = (document.getElementById('filter-cont-tipo')||{value:''}).value;
+  var lista = contatos.filter(function(c){
+    var match = !q || (c.nome+c.email+c.telefone+c.celular+'').toLowerCase().includes(q);
+    return match && (!tp || c.tipo===tp);
+  });
+  var el = document.getElementById('contatos-count');
+  if (el) el.textContent = lista.length + ' contato(s)';
+  var tbody = document.getElementById('tbody-contatos');
+  if (!tbody) return;
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📒</div><strong>Nenhum contato encontrado</strong></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = lista.map(function(c){
+    var tlabel = TIPO_CONT_LABEL[c.tipo]||c.tipo;
+    return '<tr>'
+      +'<td><div style="font-weight:500">'+(c.nome||'—')+'</div><div style="font-size:12px;color:var(--text-muted)">'+(c.fantasia||c.area||'')+'</div></td>'
+      +'<td><span class="badge badge-green" style="font-size:11px">'+tlabel+'</span></td>'
+      +'<td>'+(c.telefone||c.celular||'—')+'</td>'
+      +'<td>'+(c.email?'<a href="mailto:'+c.email+'" style="color:var(--green-mid);font-size:13px">'+c.email+'</a>':'—')+'</td>'
+      +'<td style="font-size:13px">'+[c.cidade,c.uf].filter(Boolean).join('/')+'</td>'
+      +'<td style="font-size:12px;color:var(--text-muted)">'+(c.obs?c.obs.slice(0,40)+(c.obs.length>40?'…':''):'—')+'</td>'
+      +'<td><div style="display:flex;gap:4px">'
+        +'<button class="btn btn-xs btn-secondary" onclick="abrirModalContato(\''+c.id+'\')">✏</button>'
+        +'<button class="btn btn-xs btn-danger" onclick="excluirContato(\''+c.id+'\')">✕</button>'
+      +'</div></td>'
+      +'</tr>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// PROPOSTAS
+// ══════════════════════════════════════════════════════
+async function savePropostas() { for (const i of propostas) await _fbSaveDoc('propostas', i.id, i); }
+
+function abrirModalProposta(id) {
+  _editIdProp = id || null;
+  var p = id ? propostas.find(function(x){ return x.id===id; }) : null;
+  document.getElementById('modal-prop-title').textContent = id ? 'Editar Proposta' : 'Nova Proposta';
+  // Searchable dropdown para cliente
+  var inp = document.getElementById('prop-cli-search');
+  var hid = document.getElementById('prop-cliente');
+  if (p && p.clienteId) {
+    var cli = clientes.find(function(c){ return c.id===p.clienteId; });
+    if (inp) { inp.value = cli ? cli.nome_razao_social : ''; inp.setAttribute('readonly',''); }
+    if (hid) hid.value = p.clienteId;
+  } else {
+    if (inp) { inp.value=''; inp.setAttribute('readonly',''); }
+    if (hid) hid.value='';
+  }
+  ['descricao','obs'].forEach(function(k){
+    var el=document.getElementById('prop-'+k); if (el) el.value=p?(p[k]||''):'';
+  });
+  if (document.getElementById('prop-valor')) document.getElementById('prop-valor').value = p&&p.valor ? fmtMoedaStr(p.valor) : '';
+  if (document.getElementById('prop-data'))    document.getElementById('prop-data').value    = p?(p.data||''):'';
+  if (document.getElementById('prop-validade')) document.getElementById('prop-validade').value = p?(p.validade||''):'';
+  if (document.getElementById('prop-status'))   document.getElementById('prop-status').value   = p?(p.status||'em_elaboracao'):'em_elaboracao';
+  // Populate sd-prop-list
+  sdPopulate('prop', clientes.map(function(c){ return {id:c.id, label:c.nome_razao_social}; }));
+  document.getElementById('modal-proposta').classList.add('open');
+}
+
+function salvarProposta() {
+  var cliId = document.getElementById('prop-cliente').value;
+  var desc  = document.getElementById('prop-descricao').value.trim();
+  if (!cliId) { toast('⚠ Selecione o cliente'); return; }
+  if (!desc)  { toast('⚠ Informe a descrição'); return; }
+  var valorRaw = parseMoeda(document.getElementById('prop-valor').value);
+  var obj = {
+    id:          _editIdProp || genId(),
+    clienteId:   cliId,
+    descricao:   desc,
+    valor:       valorRaw,
+    data:        document.getElementById('prop-data').value,
+    validade:    document.getElementById('prop-validade').value,
+    status:      document.getElementById('prop-status').value,
+    obs:         document.getElementById('prop-obs').value.trim(),
+    criadoEm:    _editIdProp ? (propostas.find(function(x){return x.id===_editIdProp;})||{}).criadoEm||new Date().toISOString() : new Date().toISOString()
+  };
+  if (_editIdProp) {
+    propostas = propostas.map(function(x){ return x.id===_editIdProp?obj:x; });
+    toast('✓ Proposta atualizada');
+  } else {
+    propostas.unshift(obj);
+    toast('✓ Proposta criada');
+  }
+  savePropostas();
+  closeModal('modal-proposta');
+  renderPropostas();
+}
+
+function excluirProposta(id) {
+  if (!confirm('Remover esta proposta?')) return;
+  propostas = propostas.filter(function(x){ return x.id!==id; });
+  _fbDeleteDoc('propostas', id);
+  renderPropostas(); toast('Proposta removida');
+}
+
+function fmtMoedaStr(v) {
+  if (!v && v!==0) return '';
+  return 'R$ ' + parseFloat(v).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+function parseMoeda(s) {
+  if (!s) return 0;
+  return parseFloat(String(s).replace(/[R$\s.]/g,'').replace(',','.')) || 0;
+}
+
+function renderPropostas() {
+  var q  = (document.getElementById('search-propostas')||{value:''}).value.toLowerCase();
+  var st = (document.getElementById('filter-prop-status')||{value:''}).value;
+  var lista = propostas.filter(function(p){
+    var cli = clientes.find(function(c){ return c.id===p.clienteId; });
+    var txt = (cli?cli.nome_razao_social:'')+' '+(p.descricao||'');
+    return (!q||txt.toLowerCase().includes(q)) && (!st||p.status===st);
+  });
+  var el = document.getElementById('propostas-count');
+  if (el) el.textContent = lista.length + ' proposta(s)';
+  var tbody = document.getElementById('tbody-propostas');
+  if (!tbody) return;
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📝</div><strong>Nenhuma proposta encontrada</strong></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = lista.map(function(p){
+    var cli = clientes.find(function(c){ return c.id===p.clienteId; });
+    var s = PROP_STATUS[p.status]||{label:p.status,cls:'badge-green'};
+    return '<tr>'
+      +'<td style="font-weight:500">'+(cli?cli.nome_razao_social:'—')+'</td>'
+      +'<td style="font-size:13px">'+(p.descricao||'—')+'</td>'
+      +'<td style="font-weight:600;color:var(--green-deep)">'+(p.valor?fmtMoedaStr(p.valor):'—')+'</td>'
+      +'<td style="font-size:13px">'+(p.data?fmtDate(p.data):'—')+'</td>'
+      +'<td style="font-size:13px">'+(p.validade?fmtDate(p.validade):'—')+'</td>'
+      +'<td><span class="badge '+s.cls+'">'+s.label+'</span></td>'
+      +'<td><div style="display:flex;gap:4px">'
+        +'<button class="btn btn-xs btn-secondary" onclick="abrirModalProposta(\''+p.id+'\')">✏</button>'
+        +'<button class="btn btn-xs btn-danger" onclick="excluirProposta(\''+p.id+'\')">✕</button>'
+      +'</div></td>'
+      +'</tr>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// SESMT — CONTROLE DE EXAMES
+// ══════════════════════════════════════════════════════
+async function saveSesmt() { for (const i of sesmt) await _fbSaveDoc('sesmt', i.clienteId, i); }
+
+function getSesmtEmpresa(clienteId) {
+  var emp = sesmt.find(function(x){ return x.clienteId===clienteId; });
+  if (!emp) { emp = { clienteId: clienteId, funcionarios: [] }; sesmt.push(emp); }
+  return emp;
+}
+
+function renderSesmtSelect() {
+  var sel = document.getElementById('sesmt-cli-select');
+  if (!sel) return;
+  var val = sel.value;
+  sel.innerHTML = '<option value="">— Selecione um cliente —</option>'
+    + clientes.map(function(c){ return '<option value="'+c.id+'"'+(val===c.id?' selected':'')+'>'+c.nome_razao_social+'</option>'; }).join('');
+  var cnt = document.getElementById('sesmt-count');
+  if (cnt) {
+    var total = sesmt.reduce(function(a,e){ return a+(e.funcionarios||[]).length; },0);
+    cnt.textContent = total + ' funcionário(s) cadastrado(s)';
+  }
+}
+
+function selecionarEmpresaSesmt(clienteId) {
+  _sesmtEmpresaId = clienteId || null;
+  var card = document.getElementById('sesmt-func-card');
+  var btn  = document.getElementById('btn-novo-func');
+  var nome = document.getElementById('sesmt-empresa-nome');
+  if (!clienteId) { if (card) card.style.display='none'; if (btn) btn.style.display='none'; return; }
+  var cli = clientes.find(function(c){ return c.id===clienteId; });
+  if (card) card.style.display='';
+  if (btn)  btn.style.display='';
+  if (nome) nome.textContent = cli ? ('👷 '+cli.nome_razao_social) : 'Funcionários';
+  renderFuncionarios();
+}
+
+function calcStatusVencSesmt(vencStr) {
+  if (!vencStr) return { cls:'badge-red', txt:'Sem data', key:'sem' };
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var venc = new Date(vencStr+'T00:00:00');
+  var dias = Math.ceil((venc-hoje)/86400000);
+  if (dias < 0)   return { cls:'badge-red',   txt:'Vencido há '+Math.abs(dias)+'d', key:'vencido' };
+  if (dias <= 30) return { cls:'badge-amber',  txt:'Vencendo em '+dias+'d',         key:'aviso' };
+  return               { cls:'badge-green',  txt:'No prazo',                       key:'ok' };
+}
+
+function addExameRow(exame) {
+  var id = _exameCount++;
+  var container = document.getElementById('exames-container');
+  if (!container) return;
+  document.getElementById('exames-vazio').style.display='none';
+  var div = document.createElement('div');
+  div.id = 'exame-row-'+id;
+  div.style.cssText='padding:12px 0;border-bottom:1px solid var(--border)';
+  div.innerHTML =
+    '<div style="display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr;gap:10px;margin-bottom:8px">'
+    +'<div class="field"><label>Nome do Exame</label><input type="text" id="ex-nome-'+id+'" placeholder="Ex: ASO, Audiometria..." value="'+(exame?(exame.nome||''):'')+'" oninput="fmtUpper(this)"></div>'
+    +'<div class="field"><label>Tipo</label><select id="ex-tipo-'+id+'">'
+    +TIPOS_EXAME.map(function(t){ return '<option value="'+t+'"'+(exame&&exame.tipo===t?' selected':'')+'>'+t+'</option>'; }).join('')
+    +'</select></div>'
+    +'<div class="field"><label>Data do Exame</label><input type="date" id="ex-data-'+id+'" value="'+(exame?(exame.data||''):'')+'"></div>'
+    +'<div class="field"><label>Vencimento</label><input type="date" id="ex-venc-'+id+'" value="'+(exame?(exame.vencimento||''):'')+'"></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:10px;align-items:flex-end">'
+    +'<div class="field" style="flex:1"><label>Descrição</label><input type="text" id="ex-desc-'+id+'" placeholder="Obs sobre o exame..." value="'+(exame?(exame.descricao||''):'')+'"></div>'
+    +'<button class="btn btn-danger btn-sm" onclick="removerExameRow('+id+')">✕ Remover</button>'
+    +'</div>';
+  container.appendChild(div);
+}
+
+function removerExameRow(id) {
+  var el = document.getElementById('exame-row-'+id);
+  if (el) el.remove();
+  var c = document.getElementById('exames-container');
+  if (c && !c.children.length) document.getElementById('exames-vazio').style.display='block';
+}
+
+function coletarExames() {
+  var c = document.getElementById('exames-container');
+  if (!c) return [];
+  return Array.from(c.children).map(function(div){
+    var id = div.id.replace('exame-row-','');
+    return {
+      nome:       (document.getElementById('ex-nome-'+id)||{value:''}).value.trim(),
+      tipo:       (document.getElementById('ex-tipo-'+id)||{value:''}).value,
+      data:       (document.getElementById('ex-data-'+id)||{value:''}).value,
+      vencimento: (document.getElementById('ex-venc-'+id)||{value:''}).value,
+      descricao:  (document.getElementById('ex-desc-'+id)||{value:''}).value.trim()
+    };
+  }).filter(function(e){ return e.nome||e.tipo; });
+}
+
+function toggleDemissao(sel) {
+  var wrap = document.getElementById('func-demissao-wrap');
+  if (wrap) wrap.style.display = sel.value==='inativo' ? '' : 'none';
+  if (sel.value!=='inativo') { var d=document.getElementById('func-demissao'); if(d) d.value=''; }
+}
+
+function abrirModalFuncionario(funcId) {
+  _editIdFunc = funcId || null;
+  _exameCount = 0;
+  var emp = getSesmtEmpresa(_sesmtEmpresaId);
+  var f   = funcId ? emp.funcionarios.find(function(x){ return x.id===funcId; }) : null;
+  document.getElementById('modal-func-title').textContent = funcId ? 'Editar Funcionário' : 'Novo Funcionário';
+  document.getElementById('func-status').value   = f?(f.status||'ativo'):'ativo';
+  document.getElementById('func-nome').value     = f?(f.nome||''):'';
+  document.getElementById('func-funcao').value   = f?(f.funcao||''):'';
+  document.getElementById('func-cbo').value      = f?(f.cbo||''):'';
+  document.getElementById('func-admissao').value = f?(f.admissao||''):'';
+  var dw = document.getElementById('func-demissao-wrap');
+  var di = document.getElementById('func-demissao');
+  if (f&&f.status==='inativo') { if(dw) dw.style.display=''; if(di) di.value=f.demissao||''; }
+  else { if(dw) dw.style.display='none'; if(di) di.value=''; }
+  var container = document.getElementById('exames-container');
+  if (container) container.innerHTML='';
+  var vazio = document.getElementById('exames-vazio');
+  if (vazio) vazio.style.display='block';
+  if (f && f.exames && f.exames.length) f.exames.forEach(function(e){ addExameRow(e); });
+  document.getElementById('modal-funcionario').classList.add('open');
+}
+
+function salvarFuncionario() {
+  if (!_sesmtEmpresaId) { toast('⚠ Selecione uma empresa'); return; }
+  var nome = document.getElementById('func-nome').value.trim();
+  if (!nome) { toast('⚠ Informe o nome do funcionário'); return; }
+  var emp = getSesmtEmpresa(_sesmtEmpresaId);
+  var statusVal = document.getElementById('func-status').value;
+  var obj = {
+    id:       _editIdFunc || genId(),
+    status:   statusVal,
+    nome:     nome,
+    funcao:   document.getElementById('func-funcao').value.trim(),
+    cbo:      document.getElementById('func-cbo').value.trim(),
+    admissao: document.getElementById('func-admissao').value,
+    demissao: statusVal==='inativo' ? (document.getElementById('func-demissao').value||'') : '',
+    exames:   coletarExames()
+  };
+  if (_editIdFunc) {
+    emp.funcionarios = emp.funcionarios.map(function(x){ return x.id===_editIdFunc?obj:x; });
+    toast('✓ Funcionário atualizado');
+  } else {
+    emp.funcionarios.unshift(obj);
+    toast('✓ Funcionário cadastrado');
+  }
+  saveSesmt(); closeModal('modal-funcionario'); renderFuncionarios();
+}
+
+function excluirFuncionario(funcId) {
+  if (!confirm('Remover este funcionário e seus exames?')) return;
+  var emp = getSesmtEmpresa(_sesmtEmpresaId);
+  emp.funcionarios = emp.funcionarios.filter(function(x){ return x.id!==funcId; });
+  saveSesmt(); renderFuncionarios(); toast('Funcionário removido');
+}
+
+function renderFuncionarios() {
+  if (!_sesmtEmpresaId) return;
+  var emp = getSesmtEmpresa(_sesmtEmpresaId);
+  var q   = (document.getElementById('search-func')||{value:''}).value.toLowerCase();
+  var st  = (document.getElementById('filter-func-status')||{value:''}).value;
+  var lista = emp.funcionarios.filter(function(f){
+    return (!q||(f.nome+f.funcao).toLowerCase().includes(q)) && (!st||f.status===st);
+  });
+  var tbody = document.getElementById('tbody-funcionarios');
+  if (!tbody) return;
+  if (!lista.length) {
+    tbody.innerHTML='<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">👤</div><strong>Nenhum funcionário cadastrado</strong></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = lista.map(function(f){
+    var proxVenc = (f.exames||[]).reduce(function(acc,e){
+      if (!e.vencimento) return acc;
+      return !acc||e.vencimento<acc ? e.vencimento : acc;
+    }, null);
+    var sv = proxVenc ? calcStatusVencSesmt(proxVenc) : { cls:'badge-red', txt:'Sem exames' };
+    return '<tr>'
+      +'<td><span class="badge '+(f.status==='ativo'?'badge-green':'badge-red')+'">'+(f.status==='ativo'?'✅ Ativo':'❌ Inativo')+'</span></td>'
+      +'<td style="font-weight:500">'+(f.nome||'—')+'</td>'
+      +'<td style="font-size:13px">'+(f.funcao||'—')+'</td>'
+      +'<td style="font-size:13px">'+fmtDate(f.admissao)+'</td>'
+      +'<td><span class="badge '+sv.cls+'">'+sv.txt+'</span> <span style="font-size:11px;color:var(--text-muted)">'+(f.exames?f.exames.length:0)+' exame(s)</span></td>'
+      +'<td><div style="display:flex;gap:4px">'
+        +'<button class="btn btn-xs btn-secondary" onclick="abrirModalFuncionario(\''+f.id+'\')">✏</button>'
+        +'<button class="btn btn-xs btn-danger" onclick="excluirFuncionario(\''+f.id+'\')">✕</button>'
+      +'</div></td>'
+      +'</tr>';
+  }).join('');
+}
+
+// Populate searchable dropdown for propostas client
+function sdPopulate(prefix, items) {
+  var list = document.getElementById('sd-'+prefix+'-list');
+  if (!list) return;
+  list._items = items;
+}
+
 
 </script>
 <div class="modal-overlay" id="modal-sudema">
@@ -6438,24 +7388,37 @@ function googleAlertaManual() {
             <input type="text" id="pr-protocolo" placeholder="Ex: 2024-006298">
           </div>
           <div class="field">
-            <label>Data de Atualização</label>
+            <label>Abertura</label>
+            <input type="date" id="pr-abertura">
+          </div>
+          <div class="field">
+            <label>Vencimento</label>
+            <input type="date" id="pr-vencimento">
+          </div>
+          <div class="field">
+            <label>Atualização</label>
             <input type="date" id="pr-atualizacao">
           </div>
           <div class="field">
             <label>Setor</label>
             <input type="text" id="pr-setor" placeholder="Ex: DIFLOR, DT, CCA..." oninput="fmtUpper(this)">
           </div>
+          <div class="field">
+            <label>Pendência</label>
+            <select id="pr-pendencia">
+              <option value="">— Sem pendência —</option>
+              <option value="PC">PC — Pendência do Cliente</option>
+              <option value="PI">PI — Pendência Interna</option>
+              <option value="PO">PO — Pendência do Órgão</option>
+            </select>
+          </div>
           <div class="field form-full">
-            <label>Status *</label>
+            <label>Status do Processo</label>
             <select id="pr-status">
-              <option value="Análise técnica">Análise técnica</option>
-              <option value="Anotação">Anotação</option>
-              <option value="Arquivado">Arquivado</option>
-              <option value="Emissão de Licença">Emissão de Licença</option>
-              <option value="Finalizado">Finalizado</option>
-              <option value="Licença emitida">Licença emitida</option>
-              <option value="Pedido Protocolado">Pedido Protocolado</option>
-              <option value="Providências">Providências</option>
+              <option value="Em andamento">🔵 Em andamento</option>
+              <option value="Finalizado">✅ Finalizado</option>
+              <option value="Abandonado">🚫 Abandonado</option>
+              <option value="Arquivado">📦 Arquivado</option>
             </select>
           </div>
           <div class="field form-full">
@@ -6465,10 +7428,133 @@ function googleAlertaManual() {
         </div>
       </div>
 
+      <!-- Checklist do processo -->
+      <div style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted)">Checklist</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-secondary btn-sm" onclick="abrirAplicarModelo()" style="font-size:12px">📋 Aplicar Modelo</button>
+            <button class="btn btn-primary btn-sm" onclick="adicionarItemChecklist()" style="font-size:12px">＋ Item</button>
+          </div>
+        </div>
+        <!-- Barra de progresso -->
+        <div style="margin-bottom:10px">
+          <div class="prog-bar-wrap"><div class="prog-bar-fill" id="pr-checklist-prog" style="width:0%"></div></div>
+          <span id="pr-checklist-label" style="font-size:11px;color:var(--text-muted)">0 de 0 itens concluídos (0%)</span>
+        </div>
+        <!-- Lista de itens -->
+        <div id="pr-checklist-lista" style="min-height:40px;max-height:200px;overflow-y:auto;margin-bottom:8px"></div>
+        <div id="pr-checklist-vazio" style="background:var(--surface2);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--text-muted);margin-bottom:8px">Nenhum item. Use o campo abaixo para adicionar.</div>
+        <!-- Input na parte inferior -->
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+          <input type="text" id="pr-checklist-novo" placeholder="Novo item... (Enter para adicionar)" style="flex:1;padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:var(--surface2)" onkeydown="if(event.key==='Enter'){adicionarItemChecklist();event.preventDefault()}" oninput="fmtUpper(this)">
+          <button class="btn btn-secondary" onclick="adicionarItemChecklist()" style="padding:9px 14px;font-size:18px;line-height:1">＋</button>
+        </div>
+      </div>
+
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModalSafe('modal-processo')">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarProcesso()">Salvar processo</button>
+      <button class="btn btn-primary" onclick="salvarProcesso()">💾 Salvar Processo</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DEFINIR PENDÊNCIA -->
+<div class="modal-overlay" id="modal-definir-pendencia">
+  <div class="modal" style="width:480px">
+    <div class="modal-header">
+      <h3>Definir Pendência</h3>
+      <button class="modal-close" onclick="closeModal('modal-definir-pendencia')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">Selecione o tipo de pendência para este processo:</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button onclick="definirPendencia('PC')" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid var(--border);border-radius:10px;background:var(--surface);cursor:pointer;font-family:inherit;font-size:14px;text-align:left;transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
+          <span class="pendencia-badge pend-pc" style="font-size:12px">PC</span>
+          <span style="font-weight:500">Pendência do Cliente</span>
+        </button>
+        <button onclick="definirPendencia('PI')" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid var(--border);border-radius:10px;background:var(--surface);cursor:pointer;font-family:inherit;font-size:14px;text-align:left;transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
+          <span class="pendencia-badge pend-pi" style="font-size:12px">PI</span>
+          <span style="font-weight:500">Pendência Interna</span>
+        </button>
+        <button onclick="definirPendencia('PO')" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid var(--border);border-radius:10px;background:var(--surface);cursor:pointer;font-family:inherit;font-size:14px;text-align:left;transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
+          <span class="pendencia-badge pend-po" style="font-size:12px">PO</span>
+          <span style="font-weight:500">Pendência do Órgão</span>
+        </button>
+        <button onclick="definirPendencia('')" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid #fca5a5;border-radius:10px;background:#fff5f5;cursor:pointer;font-family:inherit;font-size:14px;text-align:left;color:#b91c1c;transition:background .15s" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fff5f5'">
+          <span style="font-size:16px">✕</span>
+          <span style="font-weight:500">Remover Pendência</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MODELOS DE CHECKLIST -->
+<div class="modal-overlay" id="modal-modelos-checklist">
+  <div class="modal" style="width:640px">
+    <div class="modal-header">
+      <h3>Modelos de Checklist</h3>
+      <button class="modal-close" onclick="closeModal('modal-modelos-checklist')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <!-- Tabs -->
+      <div style="display:flex;border-bottom:2px solid var(--border);padding:0 24px">
+        <button id="tab-aplicar-btn" onclick="switchTabModelo('aplicar')" style="padding:12px 16px;border:none;background:none;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--green-mid);margin-bottom:-2px;color:var(--green-mid)">Aplicar Modelo</button>
+        <button id="tab-gerenciar-btn" onclick="switchTabModelo('gerenciar')" style="padding:12px 16px;border:none;background:none;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--text-muted)">Gerenciar Modelos</button>
+      </div>
+      <!-- Tab: Aplicar Modelo -->
+      <div id="tab-aplicar" style="padding:24px">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Selecione um modelo para aplicar ao processo atual. Os itens serão adicionados ao checklist.</p>
+        <div id="modelos-lista-aplicar">
+          <div class="empty-state" style="padding:32px"><div class="empty-icon">📋</div><span style="font-size:13px">Nenhum modelo cadastrado ainda.<br>Use a aba "Gerenciar Modelos" para criar.</span></div>
+        </div>
+      </div>
+      <!-- Tab: Gerenciar Modelos -->
+      <div id="tab-gerenciar" style="padding:24px;display:none">
+        <div style="display:flex;gap:10px;margin-bottom:16px;align-items:flex-end">
+          <div style="flex:1">
+            <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:block">Nome do novo modelo</label>
+            <input type="text" id="novo-modelo-nome" placeholder="Ex: Licenciamento LO, PGRS..." style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box" oninput="fmtUpper(this)" onkeydown="if(event.key==='Enter'){criarModelo();event.preventDefault()}">
+          </div>
+          <button class="btn btn-primary" onclick="criarModelo()">＋ Criar</button>
+        </div>
+        <div id="modelos-lista-gerenciar">
+          <div class="empty-state" style="padding:32px"><div class="empty-icon">📋</div><span style="font-size:13px">Nenhum modelo cadastrado.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR MODELO -->
+<div class="modal-overlay" id="modal-editar-modelo">
+  <div class="modal" style="width:580px">
+    <div class="modal-header">
+      <h3 id="modal-editar-modelo-title">Editar Modelo</h3>
+      <button class="modal-close" onclick="closeModal('modal-editar-modelo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:16px">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:block">Nome do modelo</label>
+        <input type="text" id="editar-modelo-nome" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box" oninput="fmtUpper(this)">
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted)">Itens do Modelo</span>
+        </div>
+        <div id="editar-modelo-itens" style="max-height:260px;overflow-y:auto;margin-bottom:10px"></div>
+        <div id="editar-modelo-vazio" style="background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--text-muted);margin-bottom:10px">Nenhum item neste modelo.</div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="editar-modelo-novo-item" placeholder="Novo item do modelo... (Enter para adicionar)" style="flex:1;padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:var(--surface2)" onkeydown="if(event.key==='Enter'){adicionarItemModelo();event.preventDefault()}" oninput="fmtUpper(this)">
+          <button class="btn btn-secondary" onclick="adicionarItemModelo()" style="padding:9px 14px;font-size:18px;line-height:1">＋</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-editar-modelo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarModelo()">Salvar modelo</button>
     </div>
   </div>
 </div>
@@ -6579,6 +7665,154 @@ function googleAlertaManual() {
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-extrato-servico')">Fechar</button>
       <button class="btn btn-primary" id="btn-extrato-pdf" onclick="exportarExtratoPDF()">📄 Exportar PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PROSPECÇÃO -->
+<div class="modal-overlay" id="modal-prospeccao">
+  <div class="modal" style="width:700px">
+    <div class="modal-header">
+      <h3 id="modal-prosp-title">Novo Lead</h3>
+      <button class="modal-close" onclick="closeModal('modal-prospeccao')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field form-full"><label>Nome / Razão Social *</label><input type="text" id="prosp-nome" placeholder="Nome ou razão social"></div>
+        <div class="field"><label>CPF / CNPJ</label><input type="text" id="prosp-cpfcnpj" placeholder="CPF ou CNPJ" maxlength="18" oninput="fmtCpfCnpj(this)"></div>
+        <div class="field"><label>Nome Fantasia</label><input type="text" id="prosp-fantasia" placeholder="Nome fantasia (opcional)"></div>
+        <div class="field"><label>Telefone</label><input type="text" id="prosp-telefone" placeholder="(00) 00000-0000" maxlength="16" oninput="fmtCelular(this)"></div>
+        <div class="field"><label>E-mail</label><input type="email" id="prosp-email" placeholder="email@empresa.com"></div>
+        <div class="field"><label>Responsável (interno)</label><input type="text" id="prosp-responsavel" placeholder="Quem está acompanhando" oninput="fmtUpper(this)"></div>
+        <div class="field"><label>Cidade</label><input type="text" id="prosp-cidade" placeholder="Cidade" oninput="fmtUpper(this)"></div>
+        <div class="field"><label>Status *</label>
+          <select id="prosp-status">
+            <option value="novo">🆕 Novo</option>
+            <option value="em_contato">📞 Em contato</option>
+            <option value="negociando">🤝 Negociando</option>
+            <option value="convertido">✅ Convertido</option>
+            <option value="descartado">❌ Descartado</option>
+          </select>
+        </div>
+        <div class="field form-full"><label>Observações</label><textarea id="prosp-obs" rows="3" placeholder="Informações adicionais..." oninput="fmtUpperTextarea(this)"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-prospeccao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarProspeccao()">Salvar lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONTATO -->
+<div class="modal-overlay" id="modal-contato">
+  <div class="modal" style="width:700px">
+    <div class="modal-header">
+      <h3 id="modal-cont-title">Novo Contato</h3>
+      <button class="modal-close" onclick="closeModal('modal-contato')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label>Tipo *</label>
+          <select id="cont-tipo" onchange="alternarTipoContato()">
+            <option value="empresa">🏢 Empresa</option>
+            <option value="pessoa">👤 Pessoa Física</option>
+            <option value="profissional">💼 Profissional</option>
+          </select>
+        </div>
+        <div class="field"><label>Nome *</label><input type="text" id="cont-nome" placeholder="Nome ou razão social" oninput="fmtUpper(this)"></div>
+        <div class="field" id="cont-fantasia-wrap"><label>Nome Fantasia</label><input type="text" id="cont-fantasia" placeholder="Nome fantasia" oninput="fmtUpper(this)"></div>
+        <div class="field" id="cont-area-wrap" style="display:none"><label>Área / Especialidade</label><input type="text" id="cont-area" placeholder="Ex: Engenharia, Advocacia..." oninput="fmtUpper(this)"></div>
+        <div class="field"><label>Telefone</label><input type="text" id="cont-telefone" placeholder="(00) 00000-0000" maxlength="16" oninput="fmtCelular(this)"></div>
+        <div class="field"><label>Celular</label><input type="text" id="cont-celular" placeholder="(00) 00000-0000" maxlength="16" oninput="fmtCelular(this)"></div>
+        <div class="field form-full"><label>E-mail</label><input type="email" id="cont-email" placeholder="email@contato.com"></div>
+        <div class="field"><label>Cidade</label><input type="text" id="cont-cidade" placeholder="Cidade" oninput="fmtUpper(this)"></div>
+        <div class="field"><label>UF</label>
+          <select id="cont-uf"><option value="">—</option><option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option><option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option><option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option><option>SP</option><option>TO</option></select>
+        </div>
+        <div class="field form-full"><label>Observações</label><textarea id="cont-obs" rows="2" placeholder="Informações adicionais..." oninput="fmtUpperTextarea(this)"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-contato')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarContato()">Salvar contato</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PROPOSTA -->
+<div class="modal-overlay" id="modal-proposta">
+  <div class="modal" style="width:700px">
+    <div class="modal-header">
+      <h3 id="modal-prop-title">Nova Proposta</h3>
+      <button class="modal-close" onclick="closeModal('modal-proposta')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field form-full"><label>Cliente *</label>
+          <div class="sd-wrap" id="sd-prop-wrap">
+            <input type="text" class="sd-input" id="prop-cli-search" placeholder="Clique ou digite para buscar cliente..." autocomplete="off" oninput="sdFilter('prop')" onfocus="sdOpen('prop')" onblur="sdBlur('prop')" readonly onclick="this.removeAttribute('readonly');sdOpen('prop')">
+            <input type="hidden" id="prop-cliente" value="">
+            <div class="sd-list" id="sd-prop-list"></div>
+          </div>
+        </div>
+        <div class="field form-full"><label>Descrição / Objeto *</label><input type="text" id="prop-descricao" placeholder="Ex: Elaboração de PGRS, Licenciamento Ambiental..." oninput="fmtUpper(this)"></div>
+        <div class="field"><label>Valor (R$) *</label><input type="text" id="prop-valor" placeholder="R$ 0,00" oninput="fmtMoedaInput(this)"></div>
+        <div class="field"><label>Data da proposta</label><input type="date" id="prop-data"></div>
+        <div class="field"><label>Validade até</label><input type="date" id="prop-validade"></div>
+        <div class="field"><label>Status *</label>
+          <select id="prop-status">
+            <option value="em_elaboracao">📝 Em elaboração</option>
+            <option value="enviada">📤 Enviada</option>
+            <option value="aprovada">✅ Aprovada</option>
+            <option value="recusada">❌ Recusada</option>
+            <option value="cancelada">🚫 Cancelada</option>
+          </select>
+        </div>
+        <div class="field form-full"><label>Observações</label><textarea id="prop-obs" rows="3" placeholder="Informações adicionais..." oninput="fmtUpperTextarea(this)"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-proposta')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarProposta()">Salvar proposta</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FUNCIONÁRIO SESMT -->
+<div class="modal-overlay" id="modal-funcionario">
+  <div class="modal" style="width:720px">
+    <div class="modal-header">
+      <h3 id="modal-func-title">Novo Funcionário</h3>
+      <button class="modal-close" onclick="closeModal('modal-funcionario')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label>Status *</label>
+          <select id="func-status" onchange="toggleDemissao(this)">
+            <option value="ativo">✅ Ativo</option>
+            <option value="inativo">❌ Inativo</option>
+          </select>
+        </div>
+        <div class="field"><label>Nome *</label><input type="text" id="func-nome" placeholder="Nome completo" oninput="fmtUpper(this)"></div>
+        <div class="field"><label>Função / Cargo</label><input type="text" id="func-funcao" placeholder="Ex: Auxiliar de Serviços Gerais" oninput="fmtUpper(this)"></div>
+        <div class="field"><label>CBO</label><input type="text" id="func-cbo" placeholder="Ex: 5143-20"></div>
+        <div class="field"><label>Data de Admissão</label><input type="date" id="func-admissao"></div>
+        <div class="field" id="func-demissao-wrap" style="display:none"><label>Data de Demissão</label><input type="date" id="func-demissao"></div>
+      </div>
+      <!-- Exames -->
+      <div style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+          <span style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)">Exames Ocupacionais</span>
+          <button class="btn btn-primary btn-sm" onclick="addExameRow()">＋ Adicionar exame</button>
+        </div>
+        <div id="exames-container"></div>
+        <div id="exames-vazio" class="empty-state" style="padding:20px"><div class="empty-icon">🩺</div><span style="font-size:13px">Nenhum exame cadastrado</span></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-funcionario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarFuncionario()">Salvar funcionário</button>
     </div>
   </div>
 </div>
