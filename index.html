@@ -1499,18 +1499,20 @@ function _fbCol(nome) {
   return collection(db, 'usuarios', _fbUid(), nome);
 }
 async function _fbSaveDoc(colName, id, dados) {
-  try {
-    const { db, doc, setDoc } = window._fb;
-    const ref = doc(db, 'usuarios', _fbUid(), colName, id);
-    await setDoc(ref, dados);
-  } catch(e) { console.error('Firebase save error:', e); }
+  const { db, doc, setDoc } = window._fb;
+  const ref = doc(db, 'usuarios', _fbUid(), colName, id);
+  var _fbTimer = setTimeout(function() {
+    toast('⚠ Sem conexão — alteração será enviada quando a internet voltar');
+  }, 10000);
+  try { await setDoc(ref, dados); } finally { clearTimeout(_fbTimer); }
 }
 async function _fbDeleteDoc(colName, id) {
-  try {
-    const { db, doc, deleteDoc } = window._fb;
-    const ref = doc(db, 'usuarios', _fbUid(), colName, id);
-    await deleteDoc(ref);
-  } catch(e) { console.error('Firebase delete error:', e); }
+  const { db, doc, deleteDoc } = window._fb;
+  const ref = doc(db, 'usuarios', _fbUid(), colName, id);
+  var _fbTimer = setTimeout(function() {
+    toast('⚠ Sem conexão — alteração será enviada quando a internet voltar');
+  }, 10000);
+  try { await deleteDoc(ref); } finally { clearTimeout(_fbTimer); }
 }
 
 // ── save* — gravam no Firestore (cada item como documento separado) ──
@@ -1849,11 +1851,12 @@ function navigate(page) {
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); clearDirty(id); }
 
-function toast(msg) {
+function toast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
+  t.style.background = type === 'error' ? '#c0392b' : '';
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2800);
+  setTimeout(() => { t.classList.remove('show'); t.style.background = ''; }, 2800);
 }
 
 // CAMPOS DO CLIENTE
@@ -1875,7 +1878,7 @@ function openModalCliente(id) {
   clearDirty('modal-cliente'); document.getElementById('modal-cliente').classList.add('open');
 }
 
-function salvarCliente() {
+async function salvarCliente() {
   const cpf = document.getElementById('c-cpf_cnpj').value.trim();
   const nome = document.getElementById('c-nome_razao_social').value.trim();
   if (!cpf) { toast('⚠ Informe o CPF/CNPJ'); return; }
@@ -1890,25 +1893,33 @@ function salvarCliente() {
     obj[campo] = el ? el.value.trim() : '';
   });
 
+  var _msgCli = editingClienteId ? '✓ Cadastro atualizado com sucesso!' : '✓ Cliente cadastrado com sucesso!';
   if (editingClienteId) {
     clientes = clientes.map(c => c.id === editingClienteId ? obj : c);
-    toast('✓ Cadastro atualizado com sucesso!');
   } else {
     clientes.unshift(obj);
-    toast('✓ Cliente cadastrado com sucesso!');
   }
-  save();
+  try {
+    await _fbSaveDoc('clientes', obj.id, obj);
+    toast(_msgCli);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   closeModal('modal-cliente');
   renderClientes();
   renderDashboard();
 }
 
-function excluirCliente(id) {
+async function excluirCliente(id) {
   if (!confirm('Tem certeza que deseja excluir o cadastro selecionado?')) return;
   clientes = clientes.filter(c => c.id !== id);
-  _fbDeleteDoc('clientes', id);
-  save(); renderClientes(); renderDashboard();
-  toast('Cadastro excluído com sucesso!');
+  try {
+    await _fbDeleteDoc('clientes', id);
+    toast('Cadastro excluído com sucesso!');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderClientes(); renderDashboard();
 }
 
 let clienteAtualId = null;
@@ -2289,7 +2300,7 @@ function openModalPagamento(id) {
   clearDirty('modal-pagamento'); document.getElementById('modal-pagamento').classList.add('open');
 }
 
-function salvarPagamento() {
+async function salvarPagamento() {
   const tipo    = document.getElementById('p-tipo').value;
   const data    = document.getElementById('p-data').value;
   if (!data) { toast('⚠ Informe a data'); return; }
@@ -2340,15 +2351,15 @@ function salvarPagamento() {
     createdAt:       existing ? existing.createdAt : new Date().toISOString()
   };
 
+  var _msgPag = editingPagamentoId ? '✓ Lançamento atualizado' : '✓ Lançamento registrado';
   if (editingPagamentoId) {
     pagamentos = pagamentos.map(p => p.id === editingPagamentoId ? obj : p);
-    toast('✓ Lançamento atualizado');
   } else {
     pagamentos.unshift(obj);
-    toast('✓ Lançamento registrado');
   }
 
   // Verifica se o serviço foi quitado e atualiza status automaticamente
+  var _servFinalizado = null;
   if (obj.servicoId && obj.tipo !== 'Despesa') {
     var serv = servicos.find(function(x){ return x.id === obj.servicoId; });
     if (serv) {
@@ -2357,25 +2368,47 @@ function salvarPagamento() {
         servicos = servicos.map(function(x){
           return x.id === obj.servicoId ? Object.assign({}, x, { statusServico: 'Finalizado' }) : x;
         });
-        saveServicos();
-        toast('✓ Lançamento registrado — Serviço marcado como Finalizado!');
+        _servFinalizado = servicos.find(function(x){ return x.id === obj.servicoId; });
       }
     }
   }
 
-  save(); closeModal('modal-pagamento'); renderPagamentos(); renderServicos(); renderDashboard();
+  try {
+    await _fbSaveDoc('pagamentos', obj.id, obj);
+    if (_servFinalizado) {
+      await _fbSaveDoc('servicos', _servFinalizado.id, _servFinalizado);
+      toast('✓ Lançamento registrado — Serviço marcado como Finalizado!');
+    } else {
+      toast(_msgPag);
+    }
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
+  closeModal('modal-pagamento'); renderPagamentos(); renderServicos(); renderDashboard();
 }
 
-function excluirPagamento(id) {
+async function excluirPagamento(id) {
   if (!confirm('Remover este lançamento?')) return;
   pagamentos = pagamentos.filter(p => p.id !== id);
-  _fbDeleteDoc('pagamentos', id);
-  save(); renderPagamentos(); renderDashboard(); toast('Lançamento removido');
+  try {
+    await _fbDeleteDoc('pagamentos', id);
+    toast('Lançamento removido');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderPagamentos(); renderDashboard();
 }
 
-function marcarPago(id) {
+async function marcarPago(id) {
   pagamentos = pagamentos.map(p => p.id===id ? Object.assign({},p,{pago:'Sim'}) : p);
-  save(); renderPagamentos(); renderDashboard(); toast('✓ Marcado como pago');
+  var _p = pagamentos.find(function(x){ return x.id===id; });
+  try {
+    await _fbSaveDoc('pagamentos', id, _p);
+    toast('✓ Marcado como pago');
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
+  renderPagamentos(); renderDashboard();
 }
 
 const fmtVal = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -2615,7 +2648,7 @@ function abrirModalSudema(id) {
   document.getElementById('modal-sudema').classList.add('open');
 }
 
-function salvarSudema() {
+async function salvarSudema() {
   var clienteId = document.getElementById('su-razao').value;
   var inputNome = document.getElementById('su-razao-search') ? document.getElementById('su-razao-search').value.trim() : '';
   var cli = clientes.find(function(c){ return c.id === clienteId; });
@@ -2640,23 +2673,32 @@ function salvarSudema() {
     createdAt: existing ? existing.createdAt : new Date().toISOString()
   };
 
+  var _msgSu = sudemaEditId ? '✓ Login atualizado' : '✓ Login SUDEMA salvo';
   if (sudemaEditId) {
     sudemaLogins = sudemaLogins.map(function(x) { return x.id === sudemaEditId ? obj : x; });
-    toast('✓ Login atualizado');
   } else {
     sudemaLogins.unshift(obj);
-    toast('✓ Login SUDEMA salvo');
   }
-  saveSudema();
+  try {
+    await _fbSaveDoc('sudemaLogins', obj.id, obj);
+    toast(_msgSu);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   closeModal('modal-sudema');
   renderSudema();
 }
 
-function excluirSudema(id) {
+async function excluirSudema(id) {
   if (!confirm('Remover este login?')) return;
   sudemaLogins = sudemaLogins.filter(function(x) { return x.id !== id; });
-  _fbDeleteDoc('sudemaLogins', id);
-  saveSudema(); renderSudema(); toast('Login removido');
+  try {
+    await _fbDeleteDoc('sudemaLogins', id);
+    toast('Login removido');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderSudema();
 }
 
 function toggleSenhaSudema(id) {
@@ -2757,7 +2799,7 @@ function abrirModalCte(id) {
   document.getElementById('modal-cte').classList.add('open');
 }
 
-function salvarCte() {
+async function salvarCte() {
   var clienteId_ct = document.getElementById('ct-razao').value;
   var inputNome_ct = document.getElementById('ct-razao-search') ? document.getElementById('ct-razao-search').value.trim() : '';
   var cli_ct = clientes.find(function(c){ return c.id === clienteId_ct; }) || clientes.find(function(c){ return c.nome_razao_social === inputNome_ct; });
@@ -2778,23 +2820,32 @@ function salvarCte() {
     createdAt: existing ? existing.createdAt : new Date().toISOString()
   };
 
+  var _msgCt = cteEditId ? '✓ Login atualizado' : '✓ Login CTE salvo';
   if (cteEditId) {
     cteLogins = cteLogins.map(function(x){ return x.id === cteEditId ? obj : x; });
-    toast('✓ Login atualizado');
   } else {
     cteLogins.unshift(obj);
-    toast('✓ Login CTE salvo');
   }
-  saveCte();
+  try {
+    await _fbSaveDoc('cteLogins', obj.id, obj);
+    toast(_msgCt);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   closeModal('modal-cte');
   renderCte();
 }
 
-function excluirCte(id) {
+async function excluirCte(id) {
   if (!confirm('Remover este login?')) return;
   cteLogins = cteLogins.filter(function(x){ return x.id !== id; });
-  _fbDeleteDoc('cteLogins', id);
-  saveCte(); renderCte(); toast('Login removido');
+  try {
+    await _fbDeleteDoc('cteLogins', id);
+    toast('Login removido');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderCte();
 }
 
 function toggleSenhaCte(id) {
@@ -2926,7 +2977,7 @@ function abrirModalIbama(id) {
   document.getElementById('modal-ibama').classList.add('open');
 }
 
-function salvarIbama() {
+async function salvarIbama() {
   var clienteId_ib = document.getElementById('ib-razao').value;
   var inputNome_ib = document.getElementById('ib-razao-search') ? document.getElementById('ib-razao-search').value.trim() : '';
   var cli_ib = clientes.find(function(c){ return c.id === clienteId_ib; }) || clientes.find(function(c){ return c.nome_razao_social === inputNome_ib; });
@@ -2955,23 +3006,32 @@ function salvarIbama() {
     createdAt: existing ? existing.createdAt : new Date().toISOString()
   };
 
+  var _msgIb = ibamaEditId ? '✓ Login atualizado' : '✓ Login IBAMA salvo';
   if (ibamaEditId) {
     ibamaLogins = ibamaLogins.map(function(x){ return x.id === ibamaEditId ? obj : x; });
-    toast('✓ Login atualizado');
   } else {
     ibamaLogins.unshift(obj);
-    toast('✓ Login IBAMA salvo');
   }
-  saveIbama();
+  try {
+    await _fbSaveDoc('ibamaLogins', obj.id, obj);
+    toast(_msgIb);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   closeModal('modal-ibama');
   renderIbama();
 }
 
-function excluirIbama(id) {
+async function excluirIbama(id) {
   if (!confirm('Remover este login?')) return;
   ibamaLogins = ibamaLogins.filter(function(x){ return x.id !== id; });
-  _fbDeleteDoc('ibamaLogins', id);
-  saveIbama(); renderIbama(); toast('Login removido');
+  try {
+    await _fbDeleteDoc('ibamaLogins', id);
+    toast('Login removido');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderIbama();
 }
 
 function toggleSenhaIbama(id) {
@@ -3077,19 +3137,24 @@ function abrirModalOutro() {
   document.getElementById('modal-novo-sistema').classList.add('open');
 }
 
-function criarNovoSistema() {
+async function criarNovoSistema() {
   var nome = document.getElementById('ns-nome').value.trim().toUpperCase();
   if (!nome) { toast('⚠ Informe o nome do sistema'); return; }
   var jaExiste = outroSistemas.find(function(s){ return s.nome === nome; });
   var fixos = ['SUDEMA','CTE','IBAMA'];
   if (jaExiste || fixos.indexOf(nome) !== -1) { toast('⚠ Sistema "' + nome + '" já existe'); return; }
-  outroSistemas.push({ nome: nome, logins: [] });
-  saveOutro();
+  var _novoSistema = { nome: nome, logins: [] };
+  outroSistemas.push(_novoSistema);
+  try {
+    await _fbSaveDoc('outroSistemas', nome, _novoSistema);
+    toast('✓ Sistema "' + nome + '" criado');
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   renderExtrasNav();
   closeModal('modal-novo-sistema');
   navigateOutro(nome);
   openLoginGroup();
-  toast('✓ Sistema "' + nome + '" criado');
 }
 
 // Abre modal para adicionar login no sistema atual
@@ -3132,7 +3197,7 @@ function ouToggleSenha() {
   else { inp.type = 'password'; btn.textContent = '👁 Ver'; }
 }
 
-function salvarOutro() {
+async function salvarOutro() {
   var sistema = getSistemaAtual();
   if (!sistema) return;
   var clienteId_ou = document.getElementById('ou-razao').value;
@@ -3155,25 +3220,34 @@ function salvarOutro() {
     createdAt: existing ? existing.createdAt : new Date().toISOString()
   };
 
+  var _msgOu = outroEditId ? '✓ Login atualizado' : '✓ Login salvo';
   if (outroEditId) {
     sistema.logins = sistema.logins.map(function(x){ return x.id === outroEditId ? obj : x; });
-    toast('✓ Login atualizado');
   } else {
     sistema.logins.unshift(obj);
-    toast('✓ Login salvo');
   }
-  saveOutro();
+  try {
+    await _fbSaveDoc('outroSistemas', sistema.nome || sistema.id, sistema);
+    toast(_msgOu);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   closeModal('modal-outro-login');
   renderOutro();
 }
 
-function excluirOutro(id) {
+async function excluirOutro(id) {
   var sistema = getSistemaAtual();
   if (!sistema) return;
   if (!confirm('Remover este login?')) return;
   sistema.logins = sistema.logins.filter(function(x){ return x.id !== id; });
-  _fbSaveDoc('outroSistemas', sistema.nome || sistema.id, sistema);
-  renderOutro(); toast('Login removido');
+  try {
+    await _fbSaveDoc('outroSistemas', sistema.nome || sistema.id, sistema);
+    toast('Login removido');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderOutro();
 }
 
 function toggleSenhaOutro(id) {
@@ -3364,7 +3438,7 @@ function abrirModalLicenca(id) {
   clearDirty('modal-licenca'); document.getElementById('modal-licenca').classList.add('open');
 }
 
-function salvarLicenca() {
+async function salvarLicenca() {
   var orgao = document.getElementById('li-orgao').value.trim();
   if (!orgao) { toast('⚠ Informe o órgão emissor'); return; }
   var existing = licencaEditId ? licencas.find(function(x){ return x.id === licencaEditId; }) : null;
@@ -3385,23 +3459,32 @@ function salvarLicenca() {
     condicionantes: getCondicionantes(),
     createdAt:  existing ? existing.createdAt : new Date().toISOString()
   };
+  var _msgLi = licencaEditId ? '✓ Licença atualizada' : '✓ Licença cadastrada';
   if (licencaEditId) {
     licencas = licencas.map(function(x){ return x.id === licencaEditId ? obj : x; });
-    toast('✓ Licença atualizada');
   } else {
     licencas.unshift(obj);
-    toast('✓ Licença cadastrada');
   }
-  saveLicencas();
+  try {
+    await _fbSaveDoc('licencas', obj.id, obj);
+    toast(_msgLi);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   closeModal('modal-licenca');
   renderLicencas();
 }
 
-function excluirLicenca(id) {
+async function excluirLicenca(id) {
   if (!confirm('Remover esta licença?')) return;
   licencas = licencas.filter(function(x){ return x.id !== id; });
-  _fbDeleteDoc('licencas', id);
-  saveLicencas(); renderLicencas(); toast('Licença removida');
+  try {
+    await _fbDeleteDoc('licencas', id);
+    toast('Licença removida');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderLicencas();
 }
 
 var licencaVisId = null;
@@ -3966,7 +4049,7 @@ function atualizarChecklistUI() {
   }).join('');
 }
 
-function salvarProcesso() {
+async function salvarProcesso() {
   var clienteIdPr = document.getElementById('pr-razao').value;
   var cliPr = clienteIdPr ? clientes.find(function(c){ return c.id === clienteIdPr; }) : null;
   var razao = cliPr ? cliPr.nome_razao_social : (document.getElementById('pr-razao-search').value.trim() || '');
@@ -3993,23 +4076,32 @@ function salvarProcesso() {
     createdAt:    existing ? existing.createdAt : new Date().toISOString()
   };
 
+  var _msgPr = processoEditId ? '✓ Processo atualizado' : '✓ Processo cadastrado';
   if (processoEditId) {
     processos = processos.map(function(x){ return x.id === processoEditId ? obj : x; });
-    toast('✓ Processo atualizado');
   } else {
     processos.unshift(obj);
-    toast('✓ Processo cadastrado');
   }
-  saveProcessos();
+  try {
+    await _fbSaveDoc('processos', obj.id, obj);
+    toast(_msgPr);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   closeModal('modal-processo');
   renderProcessos();
 }
 
-function excluirProcesso(id) {
+async function excluirProcesso(id) {
   if (!confirm('Remover este processo?')) return;
   processos = processos.filter(function(x){ return x.id !== id; });
-  _fbDeleteDoc('processos', id);
-  saveProcessos(); renderProcessos(); toast('Processo removido');
+  try {
+    await _fbDeleteDoc('processos', id);
+    toast('Processo removido');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderProcessos();
 }
 
 function renderFiltroOrgaoProcessos() {
@@ -4144,7 +4236,7 @@ function abrirModalServico(id) {
   clearDirty('modal-servico'); document.getElementById('modal-servico').classList.add('open');
 }
 
-function salvarServico() {
+async function salvarServico() {
   var clienteId  = document.getElementById('sv-cliente').value;
   var descricao  = document.getElementById('sv-descricao').value.trim();
   var valorTotal = parseMoeda(document.getElementById('sv-valor-total').value);
@@ -4176,14 +4268,18 @@ function salvarServico() {
     createdAt:     existing ? existing.createdAt : new Date().toISOString()
   };
 
+  var _msgSv = servicoEditId ? '✓ Serviço atualizado' : '✓ Serviço cadastrado';
   if (servicoEditId) {
     servicos = servicos.map(function(x){ return x.id === servicoEditId ? obj : x; });
-    toast('✓ Serviço atualizado');
   } else {
     servicos.unshift(obj);
-    toast('✓ Serviço cadastrado');
   }
-  saveServicos();
+  try {
+    await _fbSaveDoc('servicos', obj.id, obj);
+    toast(_msgSv);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   closeModal('modal-servico');
   renderServicos();
   popularServicosSelect();
@@ -4203,6 +4299,7 @@ async function migrarSetores() {
     'conta pessoal jefferson': 'CONTA PESSOAL JEFFERSON',
   };
   var alterados = 0;
+  var _alteradosList = [];
   pagamentos = pagamentos.map(function(p) {
     var changed = false;
     var novo = Object.assign({}, p);
@@ -4214,13 +4311,17 @@ async function migrarSetores() {
       var nc = mapaConta[p.conta.toLowerCase().trim()];
       if (nc && nc !== p.conta) { novo.conta = nc; changed = true; }
     }
-    if (changed) alterados++;
+    if (changed) { alterados++; _alteradosList.push(novo); }
     return novo;
   });
   if (alterados > 0) {
-    await save();
+    try {
+      for (const p of _alteradosList) await _fbSaveDoc('pagamentos', p.id, p);
+      toast('✓ ' + alterados + ' lançamento(s) atualizados (setor/conta)');
+    } catch(e) {
+      toast('⚠ Erro ao salvar: ' + e.message, 'error');
+    }
     renderPagamentos();
-    toast('✓ ' + alterados + ' lançamento(s) atualizados (setor/conta)');
   }
 }
 
@@ -4237,7 +4338,7 @@ function gerarNumeroServico(ano) {
 }
 
 // Revisa e renumera todos os serviços existentes pelo ano da data de início
-function renumerarServicos() {
+async function renumerarServicos() {
   if (!confirm('Isso vai renumerar TODOS os serviços existentes.\n\nO número será gerado pelo ano da data de início.\nServiços sem data de início usarão o ano atual.\n\nDeseja continuar?')) return;
 
   // Ordena por data de início (mais antigos primeiro) para sequencial correto
@@ -4259,18 +4360,27 @@ function renumerarServicos() {
     });
   });
 
-  saveServicos();
+  try {
+    for (const s of servicos) await _fbSaveDoc('servicos', s.id, s);
+    toast('✓ ' + servicos.length + ' serviço(s) renumerados com sucesso!');
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   renderServicos();
-  toast('✓ ' + servicos.length + ' serviço(s) renumerados com sucesso!');
 }
 
 
 
-function excluirServico(id) {
+async function excluirServico(id) {
   if (!confirm('Remover este serviço?')) return;
   servicos = servicos.filter(function(x){ return x.id !== id; });
-  _fbDeleteDoc('servicos', id);
-  saveServicos(); renderServicos(); toast('Serviço removido');
+  try {
+    await _fbDeleteDoc('servicos', id);
+    toast('Serviço removido');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderServicos();
 }
 
 function popularServicosSelect() {
@@ -4948,7 +5058,11 @@ function exportarBackup() {
     sudemaLogins: sudemaLogins,
     cteLogins:    cteLogins,
     ibamaLogins:  ibamaLogins,
-    outroSistemas:outroSistemas
+    outroSistemas:outroSistemas,
+    prospeccao:   prospeccao,
+    contatos:     contatos,
+    propostas:    propostas,
+    sesmt:        sesmt
   };
   var json = JSON.stringify(dados, null, 2);
   var blob = new Blob([json], {type:'application/json'});
@@ -4970,26 +5084,32 @@ async function importarBackup() {
     if (!file) return;
     var reader = new FileReader();
     reader.onload = async function(ev) {
-      try {
-        var dados = JSON.parse(ev.target.result);
-        if (!dados.clientes && !dados.pagamentos) { toast('⚠ Arquivo inválido'); return; }
+      var dados;
+      try { dados = JSON.parse(ev.target.result); }
+        catch(err) { toast('⚠ Arquivo inválido: não é um JSON válido', 'error'); return; }
+        if (!dados.clientes && !dados.pagamentos) { toast('⚠ Arquivo inválido: dados não encontrados', 'error'); return; }
         if (!confirm('Isso irá substituir TODOS os dados atuais. Deseja continuar?')) return;
         toast('⏳ Importando dados para a nuvem...');
-        if (dados.clientes)      { clientes      = dados.clientes;      await save(); }
-        if (dados.pagamentos)    { pagamentos     = dados.pagamentos;    await save(); }
-        if (dados.licencas)      { licencas       = dados.licencas;      await saveLicencas(); }
-        if (dados.processos)     { processos      = dados.processos;     await saveProcessos(); }
-        if (dados.servicos)      { servicos       = dados.servicos;      await saveServicos(); }
-        if (dados.sudemaLogins)  { sudemaLogins   = dados.sudemaLogins;  await saveSudema(); }
-        if (dados.cteLogins)     { cteLogins      = dados.cteLogins;     await saveCte(); }
-        if (dados.ibamaLogins)   { ibamaLogins    = dados.ibamaLogins;   await saveIbama(); }
-        if (dados.outroSistemas) { outroSistemas  = dados.outroSistemas; await saveOutro(); }
-        renderDashboard();
-        renderExtrasNav();
-        toast('✓ Backup importado com sucesso!');
-      } catch(err) {
-        toast('⚠ Erro ao ler o arquivo: ' + err.message);
-      }
+        try {
+          if (dados.clientes)      { clientes      = dados.clientes;      await save(); }
+          if (dados.pagamentos)    { pagamentos     = dados.pagamentos;    await save(); }
+          if (dados.licencas)      { licencas       = dados.licencas;      await saveLicencas(); }
+          if (dados.processos)     { processos      = dados.processos;     await saveProcessos(); }
+          if (dados.servicos)      { servicos       = dados.servicos;      await saveServicos(); }
+          if (dados.sudemaLogins)  { sudemaLogins   = dados.sudemaLogins;  await saveSudema(); }
+          if (dados.cteLogins)     { cteLogins      = dados.cteLogins;     await saveCte(); }
+          if (dados.ibamaLogins)   { ibamaLogins    = dados.ibamaLogins;   await saveIbama(); }
+          if (dados.outroSistemas) { outroSistemas  = dados.outroSistemas; await saveOutro(); }
+          if (dados.prospeccao)    { prospeccao     = dados.prospeccao;    await saveProspeccao(); }
+          if (dados.contatos)      { contatos       = dados.contatos;      await saveContatos(); }
+          if (dados.propostas)     { propostas      = dados.propostas;     await savePropostas(); }
+          if (dados.sesmt)         { sesmt          = dados.sesmt;         await saveSesmt(); }
+          renderDashboard();
+          renderExtrasNav();
+          toast('✓ Backup importado com sucesso!');
+        } catch(err) {
+          toast('⚠ Erro ao importar: ' + err.message, 'error');
+        }
     };
     reader.readAsText(file);
   };
@@ -5538,7 +5658,7 @@ function toggleServicoCard(id) {
 }
 
 // ── DUPLICAR LICENÇA ──────────────────────────────────
-function duplicarLicenca(id) {
+async function duplicarLicenca(id) {
   var orig = licencas.find(function(l){ return l.id === id; });
   if (!orig) return;
   var nova = JSON.parse(JSON.stringify(orig));
@@ -5552,9 +5672,13 @@ function duplicarLicenca(id) {
   nova.condicionantes = [];
   nova.createdAt = new Date().toISOString();
   licencas.unshift(nova);
-  saveLicencas();
+  try {
+    await _fbSaveDoc('licencas', nova.id, nova);
+    toast('✓ Licença duplicada — preencha número, datas e condicionantes');
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   renderLicencas();
-  toast('✓ Licença duplicada — preencha número, datas e condicionantes');
   abrirModalLicenca(nova.id);
 }
 
@@ -6266,11 +6390,15 @@ async function definirPendencia(valor) {
   var p = processos.find(function(x){ return x.id === _pendenciaProcessoId; });
   if (!p) return;
   p.pendencia = valor;
-  await _fbSaveDoc('processos', p.id, p);
+  try {
+    await _fbSaveDoc('processos', p.id, p);
+    var msg = valor ? ('✓ Pendência definida: ' + valor) : '✓ Pendência removida';
+    toast(msg);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   closeModal('modal-definir-pendencia');
   renderProcessos();
-  var msg = valor ? ('✓ Pendência definida: ' + valor) : '✓ Pendência removida';
-  toast(msg);
 }
 
 // ══════════════════════════════════════════════════════
@@ -6451,7 +6579,7 @@ function abrirModalProsp(id) {
   document.getElementById('modal-prospeccao').classList.add('open');
 }
 
-function salvarProspeccao() {
+async function salvarProspeccao() {
   var nome = document.getElementById('prosp-nome').value.trim();
   if (!nome) { toast('⚠ Informe o nome'); return; }
   var obj = {
@@ -6467,26 +6595,35 @@ function salvarProspeccao() {
     obs:         document.getElementById('prosp-obs').value.trim(),
     criadoEm:    _editIdProsp ? (prospeccao.find(function(x){return x.id===_editIdProsp;})||{}).criadoEm||new Date().toISOString() : new Date().toISOString()
   };
+  var _msgPs = _editIdProsp ? '✓ Lead atualizado' : '✓ Lead adicionado';
   if (_editIdProsp) {
     prospeccao = prospeccao.map(function(x){ return x.id===_editIdProsp?obj:x; });
-    toast('✓ Lead atualizado');
   } else {
     prospeccao.unshift(obj);
-    toast('✓ Lead adicionado');
   }
-  saveProspeccao();
+  try {
+    await _fbSaveDoc('prospeccao', obj.id, obj);
+    toast(_msgPs);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   closeModal('modal-prospeccao');
   renderProspeccao();
 }
 
-function excluirProspeccao(id) {
+async function excluirProspeccao(id) {
   if (!confirm('Remover este lead?')) return;
   prospeccao = prospeccao.filter(function(x){ return x.id!==id; });
-  _fbDeleteDoc('prospeccao', id);
-  renderProspeccao(); toast('Lead removido');
+  try {
+    await _fbDeleteDoc('prospeccao', id);
+    toast('Lead removido');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderProspeccao();
 }
 
-function converterParaCliente(id) {
+async function converterParaCliente(id) {
   var p = prospeccao.find(function(x){ return x.id===id; });
   if (!p) return;
   if (!confirm('Converter "'+p.nome+'" para cliente? Os dados serão copiados.')) return;
@@ -6496,10 +6633,16 @@ function converterParaCliente(id) {
     email: p.email||'', observacao: p.obs||'', createdAt: new Date().toISOString()
   };
   clientes.unshift(obj);
-  _fbSaveDoc('clientes', obj.id, obj);
-  prospeccao = prospeccao.map(function(x){ return x.id===id ? Object.assign({},x,{status:'convertido'}) : x; });
-  saveProspeccao(); renderProspeccao(); renderClientes();
-  toast('✓ Lead convertido para cliente');
+  var _pConv = Object.assign({}, p, { status: 'convertido' });
+  prospeccao = prospeccao.map(function(x){ return x.id===id ? _pConv : x; });
+  try {
+    await _fbSaveDoc('clientes', obj.id, obj);
+    await _fbSaveDoc('prospeccao', id, _pConv);
+    toast('✓ Lead convertido para cliente');
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
+  renderProspeccao(); renderClientes();
 }
 
 function renderProspeccao() {
@@ -6562,7 +6705,7 @@ function alternarTipoContato() {
   if (aw) aw.style.display = tipo==='profissional' ? '' : 'none';
 }
 
-function salvarContato() {
+async function salvarContato() {
   var nome = document.getElementById('cont-nome').value.trim();
   if (!nome) { toast('⚠ Informe o nome'); return; }
   var tipo = document.getElementById('cont-tipo').value;
@@ -6580,23 +6723,32 @@ function salvarContato() {
     obs:      document.getElementById('cont-obs').value.trim(),
     criadoEm: _editIdCont ? (contatos.find(function(x){return x.id===_editIdCont;})||{}).criadoEm||new Date().toISOString() : new Date().toISOString()
   };
+  var _msgCo = _editIdCont ? '✓ Contato atualizado' : '✓ Contato cadastrado';
   if (_editIdCont) {
     contatos = contatos.map(function(x){ return x.id===_editIdCont?obj:x; });
-    toast('✓ Contato atualizado');
   } else {
     contatos.unshift(obj);
-    toast('✓ Contato cadastrado');
   }
-  saveContatos();
+  try {
+    await _fbSaveDoc('contatos', obj.id, obj);
+    toast(_msgCo);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   closeModal('modal-contato');
   renderContatos();
 }
 
-function excluirContato(id) {
+async function excluirContato(id) {
   if (!confirm('Remover este contato?')) return;
   contatos = contatos.filter(function(x){ return x.id!==id; });
-  _fbDeleteDoc('contatos', id);
-  renderContatos(); toast('Contato removido');
+  try {
+    await _fbDeleteDoc('contatos', id);
+    toast('Contato removido');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderContatos();
 }
 
 var TIPO_CONT_LABEL = { empresa:'🏢 Empresa', pessoa:'👤 Pessoa Física', profissional:'💼 Profissional' };
@@ -6665,7 +6817,7 @@ function abrirModalProposta(id) {
   document.getElementById('modal-proposta').classList.add('open');
 }
 
-function salvarProposta() {
+async function salvarProposta() {
   var cliId = document.getElementById('prop-cliente').value;
   var desc  = document.getElementById('prop-descricao').value.trim();
   if (!cliId) { toast('⚠ Selecione o cliente'); return; }
@@ -6682,23 +6834,32 @@ function salvarProposta() {
     obs:         document.getElementById('prop-obs').value.trim(),
     criadoEm:    _editIdProp ? (propostas.find(function(x){return x.id===_editIdProp;})||{}).criadoEm||new Date().toISOString() : new Date().toISOString()
   };
+  var _msgPo = _editIdProp ? '✓ Proposta atualizada' : '✓ Proposta criada';
   if (_editIdProp) {
     propostas = propostas.map(function(x){ return x.id===_editIdProp?obj:x; });
-    toast('✓ Proposta atualizada');
   } else {
     propostas.unshift(obj);
-    toast('✓ Proposta criada');
   }
-  savePropostas();
+  try {
+    await _fbSaveDoc('propostas', obj.id, obj);
+    toast(_msgPo);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
   closeModal('modal-proposta');
   renderPropostas();
 }
 
-function excluirProposta(id) {
+async function excluirProposta(id) {
   if (!confirm('Remover esta proposta?')) return;
   propostas = propostas.filter(function(x){ return x.id!==id; });
-  _fbDeleteDoc('propostas', id);
-  renderPropostas(); toast('Proposta removida');
+  try {
+    await _fbDeleteDoc('propostas', id);
+    toast('Proposta removida');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderPropostas();
 }
 
 function fmtMoedaStr(v) {
@@ -6866,7 +7027,7 @@ function abrirModalFuncionario(funcId) {
   document.getElementById('modal-funcionario').classList.add('open');
 }
 
-function salvarFuncionario() {
+async function salvarFuncionario() {
   if (!_sesmtEmpresaId) { toast('⚠ Selecione uma empresa'); return; }
   var nome = document.getElementById('func-nome').value.trim();
   if (!nome) { toast('⚠ Informe o nome do funcionário'); return; }
@@ -6882,21 +7043,32 @@ function salvarFuncionario() {
     demissao: statusVal==='inativo' ? (document.getElementById('func-demissao').value||'') : '',
     exames:   coletarExames()
   };
+  var _msgFu = _editIdFunc ? '✓ Funcionário atualizado' : '✓ Funcionário cadastrado';
   if (_editIdFunc) {
     emp.funcionarios = emp.funcionarios.map(function(x){ return x.id===_editIdFunc?obj:x; });
-    toast('✓ Funcionário atualizado');
   } else {
     emp.funcionarios.unshift(obj);
-    toast('✓ Funcionário cadastrado');
   }
-  saveSesmt(); closeModal('modal-funcionario'); renderFuncionarios();
+  try {
+    await _fbSaveDoc('sesmt', emp.clienteId, emp);
+    toast(_msgFu);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
+  closeModal('modal-funcionario'); renderFuncionarios();
 }
 
-function excluirFuncionario(funcId) {
+async function excluirFuncionario(funcId) {
   if (!confirm('Remover este funcionário e seus exames?')) return;
   var emp = getSesmtEmpresa(_sesmtEmpresaId);
   emp.funcionarios = emp.funcionarios.filter(function(x){ return x.id!==funcId; });
-  saveSesmt(); renderFuncionarios(); toast('Funcionário removido');
+  try {
+    await _fbSaveDoc('sesmt', emp.clienteId, emp);
+    toast('Funcionário removido');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderFuncionarios();
 }
 
 function renderFuncionarios() {
