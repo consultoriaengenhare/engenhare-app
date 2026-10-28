@@ -10,7 +10,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, collection, doc, setDoc, getDocs, onSnapshot, deleteDoc, writeBatch }
+  import { getFirestore, collection, doc, setDoc, getDoc, getDocs, onSnapshot, deleteDoc, writeBatch }
     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -28,7 +28,7 @@
 
   // ── Expõe para o código global ───────────────────────
   window._fb = { auth, db, signInWithEmailAndPassword, signOut, onAuthStateChanged,
-                 collection, doc, setDoc, getDocs, onSnapshot, deleteDoc, writeBatch };
+                 collection, doc, setDoc, getDoc, getDocs, onSnapshot, deleteDoc, writeBatch };
 
   // ── Autenticação ─────────────────────────────────────
   onAuthStateChanged(auth, function(user) {
@@ -1042,7 +1042,10 @@ function fazerLogout() {
 <div class="page" id="page-propostas">
   <div class="topbar">
     <div><h2>Propostas</h2><div class="topbar-sub" id="propostas-count">—</div></div>
-    <button class="btn btn-primary" onclick="abrirModalProposta()">＋ Nova proposta</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary btn-sm" onclick="propConfigurarNumeracao()" title="Definir o último número usado no ano">⚙ Numeração</button>
+      <button class="btn btn-primary" onclick="abrirModalProposta()">＋ Nova proposta</button>
+    </div>
   </div>
   <div class="card">
     <div class="search-bar">
@@ -1475,6 +1478,7 @@ let _editIdProsp = null;
 let _editIdCont = null;
 let _editIdProp = null;
 let _propItens = [];
+let _propEscopo = [];
 let _propVincularId = null;
 let _propVincularIdPendente = null;
 let _editIdFunc = null;
@@ -1524,6 +1528,11 @@ async function save() {
   for (const p of pagamentos) await _fbSaveDoc('pagamentos', p.id, p);
 }
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+// Data de hoje (AAAA-MM-DD) pelo horário local — toISOString() usa UTC e vira o dia após 21h no Brasil
+function hojeLocal() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 
 // ══ FIREBASE: INIT + SYNC ════════════════════════════════════════
 // Chamado pelo onAuthStateChanged quando o usuário faz login.
@@ -2288,7 +2297,7 @@ function openModalPagamento(id) {
     clientes.slice().sort((a,b)=>(a.nome_razao_social||'').localeCompare(b.nome_razao_social||'','pt-BR'))
       .map(c => '<option value="' + c.id + '"' + (p&&p.clienteId===c.id?' selected':'') + '>' + c.nome_razao_social + '</option>').join('');
 
-  document.getElementById('p-data').value  = p ? (p.data||'') : new Date().toISOString().slice(0,10);
+  document.getElementById('p-data').value  = p ? (p.data||'') : hojeLocal();
   document.getElementById('p-tipo').value  = p ? (p.tipo||'Receita') : 'Receita';
   document.getElementById('p-setor').value = p ? (p.setor||'') : '';
   document.getElementById('p-conta').value = p ? (p.conta||'') : '';
@@ -4895,6 +4904,7 @@ function sdInputId(ns)  {
   if (ns === 'ct') return 'ct-razao-search';
   if (ns === 'ib') return 'ib-razao-search';
   if (ns === 'ou') return 'ou-razao-search';
+  if (ns === 'po') return 'prop-nome';
   return 'sv-cliente-search';
 }
 function sdHiddenId(ns) {
@@ -4904,6 +4914,7 @@ function sdHiddenId(ns) {
   if (ns === 'ct') return 'ct-razao';
   if (ns === 'ib') return 'ib-razao';
   if (ns === 'ou') return 'ou-razao';
+  if (ns === 'po') return 'prop-clienteId';
   return 'sv-cliente';
 }
 
@@ -4961,6 +4972,7 @@ function sdSelect(ns, clienteId, nome) {
   if (ns === 'ct') cteAutoFillSd();
   if (ns === 'ib') ibamaAutoFillSd();
   if (ns === 'ou') outroAutoFillSd();
+  if (ns === 'po') _propClienteAutoFill();
 }
 
 function sdClear(ns) {
@@ -5085,7 +5097,7 @@ function exportarBackup() {
   var url  = URL.createObjectURL(blob);
   var a    = document.createElement('a');
   a.href   = url;
-  a.download = 'engenhare-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.download = 'engenhare-backup-' + hojeLocal() + '.json';
   a.click();
   URL.revokeObjectURL(url);
   toast('✓ Backup exportado com sucesso!');
@@ -6194,11 +6206,11 @@ function googleObterToken() {
 function googleAlertaJaRodouHoje() {
   var ultimo = localStorage.getItem(CHAVE_ULTIMO_ALERTA);
   if (!ultimo) return false;
-  return ultimo === new Date().toISOString().slice(0, 10);
+  return ultimo === hojeLocal();
 }
 
 function googleMarcarAlertaHoje() {
-  localStorage.setItem(CHAVE_ULTIMO_ALERTA, new Date().toISOString().slice(0, 10));
+  localStorage.setItem(CHAVE_ULTIMO_ALERTA, hojeLocal());
 }
 
 // Coleta itens que precisam de alerta
@@ -6812,6 +6824,53 @@ function renderContatos() {
 // ══════════════════════════════════════════════════════
 async function savePropostas() { for (const i of propostas) await _fbSaveDoc('propostas', i.id, i); }
 
+// ── Numeração automática: usuarios/{uid}/config/propostas = { "2026": 31, ... } (último nº usado por ano)
+var _propContador = {};
+
+async function _propCarregarContador() {
+  try {
+    const { db, doc, getDoc } = window._fb;
+    var snap = await getDoc(doc(db, 'usuarios', _fbUid(), 'config', 'propostas'));
+    _propContador = snap.exists() ? (snap.data() || {}) : {};
+  } catch (e) { console.warn('Contador de propostas indisponível (usando cache local)', e); }
+  return _propContador;
+}
+
+async function _propSalvarContador(ano, n) {
+  const { db, doc, setDoc } = window._fb;
+  var dados = {}; dados[ano] = n;
+  await setDoc(doc(db, 'usuarios', _fbUid(), 'config', 'propostas'), dados, { merge: true });
+  _propContador = Object.assign({}, _propContador, dados);
+}
+
+// "031/2026" → { n: 31, ano: "2026" }; formato fora do padrão → null
+function _propParseNumero(numero) {
+  var m = String(numero || '').trim().match(/^(\d+)\s*\/\s*(\d{4})$/);
+  return m ? { n: parseInt(m[1], 10), ano: m[2] } : null;
+}
+
+function _propProximoNumero() {
+  var ano = String(new Date().getFullYear());
+  var maior = parseInt(_propContador[ano], 10) || 0;
+  propostas.forEach(function(p) {
+    var m = _propParseNumero(p.numero);
+    if (m && m.ano === ano && m.n > maior) maior = m.n;
+  });
+  return String(maior + 1).padStart(3, '0') + '/' + ano;
+}
+
+async function propConfigurarNumeracao() {
+  var ano = String(new Date().getFullYear());
+  await _propCarregarContador();
+  var resp = prompt('Último número de proposta usado em ' + ano + ':', String(parseInt(_propContador[ano], 10) || 0));
+  if (resp === null) return;
+  resp = resp.trim();
+  if (!/^\d+$/.test(resp)) { toast('⚠ Informe um número inteiro'); return; }
+  try { await _propSalvarContador(ano, parseInt(resp, 10)); }
+  catch (e) { toast('⚠ Erro ao salvar numeração: ' + e.message, 'error'); return; }
+  toast('✓ Numeração salva — próxima proposta: ' + _propProximoNumero());
+}
+
 function _propNome(p) {
   if (p.clienteNome) return p.clienteNome;
   var cli = clientes.find(function(c){ return c.id === p.clienteId; });
@@ -6855,30 +6914,71 @@ function _propRemoverItem(i) {
   propAtualizarItensUI();
 }
 
+// Escopo: array de textos (escopoItens); propostas antigas têm escopo em texto, 1 item por linha
+function _propEscopoItens(p) {
+  if (!p) return [];
+  if (Array.isArray(p.escopoItens)) return p.escopoItens.slice();
+  return propLinhas(p.escopo);
+}
+
+function propAtualizarEscopoUI() {
+  var tbody = document.getElementById('prop-escopo-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = _propEscopo.map(function(txt, i) {
+    return '<tr>'
+      + '<td><input type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);outline:none" value="' + (txt||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '" oninput="_propEscopo['+i+']=this.value" placeholder="Descrição do serviço..."></td>'
+      + '<td style="width:36px;text-align:center"><button class="btn btn-xs btn-danger" onclick="_propRemoverEscopo('+i+')">✕</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function _propAdicionarEscopo() {
+  _propEscopo.push('');
+  propAtualizarEscopoUI();
+}
+
+function _propRemoverEscopo(i) {
+  _propEscopo.splice(i, 1);
+  propAtualizarEscopoUI();
+}
+
+// Texto livre: só vincula clienteId se o nome digitado for exatamente o de um cliente cadastrado
 function _propNomeSelecionado() {
-  var nome = document.getElementById('prop-nome').value.trim();
-  var dl = document.getElementById('prop-clientes-list');
-  var id = '';
-  if (dl) {
-    var opts = dl.querySelectorAll('option');
-    for (var i = 0; i < opts.length; i++) {
-      if (opts[i].value === nome) { id = opts[i].getAttribute('data-id') || ''; break; }
-    }
-  }
-  document.getElementById('prop-clienteId').value = id;
+  var nome = document.getElementById('prop-nome').value.trim().toLowerCase();
+  var cli = nome ? clientes.find(function(c){ return (c.nome_razao_social||'').trim().toLowerCase() === nome; }) : null;
+  document.getElementById('prop-clienteId').value = cli ? cli.id : '';
+}
+
+// Ao escolher um cliente na lista: preenche cidade/estado com o cadastro, se existirem
+function _propClienteAutoFill() {
+  var cliId = document.getElementById('prop-clienteId').value;
+  var cli = clientes.find(function(c){ return c.id === cliId; });
+  if (!cli) return;
+  if (cli.cidade) document.getElementById('prop-cidade').value = cli.cidade;
+  var uf = String(cli.estado || '').trim().toUpperCase();
+  var sel = document.getElementById('prop-uf');
+  if (uf && Array.prototype.some.call(sel.options, function(o){ return o.value === uf; })) sel.value = uf;
 }
 
 function abrirModalProposta(id) {
   _editIdProp = id || null;
   var p = id ? _propToObj(propostas.find(function(x){ return x.id===id; })) : null;
   document.getElementById('modal-prop-title').textContent = id ? 'Editar Proposta' : 'Nova Proposta';
-  document.getElementById('prop-numero').value = p ? (p.numero||'') : '';
-  document.getElementById('prop-nome').value = p ? _propNome(p) : '';
-  document.getElementById('prop-clienteId').value = p ? (p.clienteId||'') : '';
+  document.getElementById('prop-numero').value = p ? (p.numero||'') : _propProximoNumero();
+  if (!p) {
+    // Sugestão imediata pelo cache; atualiza após ler o contador do Firestore
+    _propCarregarContador().then(function() {
+      if (!_editIdProp && document.getElementById('modal-proposta').classList.contains('open'))
+        document.getElementById('prop-numero').value = _propProximoNumero();
+    });
+  }
+  var _nomeCli = p ? _propNome(p) : '';
+  sdSetValue('po', p ? (p.clienteId||'') : '', _nomeCli === '—' ? '' : _nomeCli);
+  document.getElementById('sd-po-list').classList.remove('open');
   document.getElementById('prop-cidade').value = p ? (p.cidade||'') : '';
-  document.getElementById('prop-data').value = p ? (p.data||new Date().toISOString().slice(0,10)) : new Date().toISOString().slice(0,10);
+  document.getElementById('prop-uf').value = p ? (p.uf||'') : 'PB';
+  document.getElementById('prop-data').value = p ? (p.data||hojeLocal()) : hojeLocal();
   document.getElementById('prop-validade-dias').value = p ? (p.validadeDias||20) : 20;
-  document.getElementById('prop-escopo').value = p ? (p.escopo||'') : '';
   document.getElementById('prop-pagamento').value = p ? (p.pagamento!=null?p.pagamento:PROP_PAGAMENTO_PADRAO) : PROP_PAGAMENTO_PADRAO;
   document.getElementById('prop-forma-pagamento').value = p ? (p.formaPagamento!=null?p.formaPagamento:PROP_FORMA_PADRAO) : PROP_FORMA_PADRAO;
   document.getElementById('prop-outras-info').value = p ? (p.outrasInfo!=null?p.outrasInfo:PROP_OUTRAS_PADRAO) : PROP_OUTRAS_PADRAO;
@@ -6886,20 +6986,26 @@ function abrirModalProposta(id) {
   document.getElementById('prop-obs').value = p ? (p.obs||'') : '';
   _propItens = p && p.itens ? p.itens.map(function(it){ return {descricao:it.descricao||'',valor:Number(it.valor)||0}; }) : [{descricao:'',valor:0}];
   propAtualizarItensUI();
-  var dl = document.getElementById('prop-clientes-list');
-  if (dl) dl.innerHTML = clientes.map(function(c){ return '<option value="'+c.nome_razao_social.replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'" data-id="'+c.id+'">'; }).join('');
+  _propEscopo = _propEscopoItens(p);
+  if (!_propEscopo.length) _propEscopo = [''];
+  propAtualizarEscopoUI();
   document.getElementById('modal-proposta').classList.add('open');
 }
 
 async function _salvarPropostaCore(gerarPdf) {
-  var numero = document.getElementById('prop-numero').value.trim();
   var nome   = document.getElementById('prop-nome').value.trim();
-  if (!numero) { toast('⚠ Informe o número da proposta'); return; }
   if (!nome)   { toast('⚠ Informe o nome do cliente'); return; }
-  _propNomeSelecionado();
   var cliId = document.getElementById('prop-clienteId').value;
-  var dupNum = propostas.find(function(x){ return x.numero===numero && x.id!==(_editIdProp||''); });
-  if (dupNum) { toast('⚠ Já existe uma proposta com o número ' + numero); return; }
+  var existente = _editIdProp ? propostas.find(function(x){ return x.id===_editIdProp; }) : null;
+  var sugerido = document.getElementById('prop-numero').value.trim();
+  var numero = sugerido;
+  if (existente) {
+    numero = existente.numero || sugerido;   // editar nunca muda o número
+  } else if (!_editIdProp) {
+    // Nova: recalcula com o contador mais recente; se o sugerido foi usado nesse meio-tempo, pega o seguinte
+    await _propCarregarContador();
+    numero = _propProximoNumero();
+  }
   var statusSelecionado = document.getElementById('prop-status').value;
   var total = _propItens.reduce(function(a,it){ return a + (Number(it.valor)||0); }, 0);
   var obj = {
@@ -6907,9 +7013,10 @@ async function _salvarPropostaCore(gerarPdf) {
     numero:         numero,
     clienteNome:    nome,
     cidade:         document.getElementById('prop-cidade').value.trim(),
+    uf:             document.getElementById('prop-uf').value,
     data:           document.getElementById('prop-data').value,
     validadeDias:   parseInt(document.getElementById('prop-validade-dias').value)||20,
-    escopo:         document.getElementById('prop-escopo').value.trim(),
+    escopoItens:    _propEscopo.map(function(s){ return String(s||'').trim(); }).filter(Boolean),
     itens:          _propItens.filter(function(it){ return it.descricao||it.valor; }),
     valor:          total,
     pagamento:      document.getElementById('prop-pagamento').value,
@@ -6917,10 +7024,11 @@ async function _salvarPropostaCore(gerarPdf) {
     outrasInfo:     document.getElementById('prop-outras-info').value,
     status:         (statusSelecionado === 'aprovada' && !cliId) ? 'em_elaboracao' : statusSelecionado,
     obs:            document.getElementById('prop-obs').value.trim(),
-    criadoEm:       _editIdProp ? (propostas.find(function(x){return x.id===_editIdProp;})||{}).criadoEm||new Date().toISOString() : new Date().toISOString()
+    criadoEm:       (existente && existente.criadoEm) || new Date().toISOString()
   };
   if (cliId) obj.clienteId = cliId;
-  var _msgPo = _editIdProp ? '✓ Proposta atualizada' : '✓ Proposta criada';
+  var _msgPo = _editIdProp ? '✓ Proposta atualizada'
+    : (numero !== sugerido ? '⚠ O nº ' + sugerido + ' já estava em uso — proposta criada como ' + numero : '✓ Proposta criada nº ' + numero);
   if (_editIdProp) {
     propostas = propostas.map(function(x){ return x.id===_editIdProp?obj:x; });
   } else {
@@ -6933,10 +7041,18 @@ async function _salvarPropostaCore(gerarPdf) {
     toast('⚠ Erro ao salvar: ' + e.message, 'error');
     return;
   }
+  if (!_editIdProp) {
+    // Atualiza o contador do ano (nunca diminui); falha aqui não impede nada — o próximo nº também considera as propostas gravadas
+    var m = _propParseNumero(numero);
+    if (m) {
+      _propSalvarContador(m.ano, Math.max(parseInt(_propContador[m.ano], 10) || 0, m.n))
+        .catch(function(e) { console.warn('Contador de propostas não atualizado', e); });
+    }
+  }
   closeModal('modal-proposta');
   renderPropostas();
   if (gerarPdf) {
-    try { var doc = gerarPdfProposta(obj); doc.save(nomeArquivoProposta(obj)); }
+    try { var doc = gerarPdfProposta(Object.assign({}, obj, { escopo: obj.escopoItens.join('\n') })); doc.save(nomeArquivoProposta(obj)); }
     catch(e) { toast('⚠ Erro ao gerar PDF: '+e.message,'error'); }
   }
   if (statusSelecionado === 'aprovada' && !cliId) {
@@ -6950,7 +7066,7 @@ async function salvarPropostaEPdf() { await _salvarPropostaCore(true); }
 
 function gerarPdfPropostaId(id) {
   var p = _propToObj(propostas.find(function(x){ return x.id===id; })||{});
-  try { var doc = gerarPdfProposta(p); doc.save(nomeArquivoProposta(p)); }
+  try { var doc = gerarPdfProposta(Object.assign({}, p, { escopo: _propEscopoItens(p).join('\n') })); doc.save(nomeArquivoProposta(p)); }
   catch(e) { toast('⚠ Erro ao gerar PDF: '+e.message,'error'); }
 }
 
@@ -7073,7 +7189,7 @@ function renderPropostas() {
   var st = (document.getElementById('filter-prop-status')||{value:''}).value;
   var lista = propostas.filter(function(p){
     var nome = _propNome(p);
-    var txt = (p.numero||'') + ' ' + nome + ' ' + (p.descricao||'') + ' ' + (p.escopo||'');
+    var txt = (p.numero||'') + ' ' + nome + ' ' + (p.descricao||'') + ' ' + _propEscopoItens(p).join(' ');
     return (!q||txt.toLowerCase().includes(q)) && (!st||p.status===st);
   });
   var el = document.getElementById('propostas-count');
@@ -7087,7 +7203,7 @@ function renderPropostas() {
   tbody.innerHTML = lista.map(function(p){
     var nome = _propNome(p);
     var s = PROP_STATUS[p.status]||{label:p.status,cls:'badge-green'};
-    var desc = p.itens && p.itens.length ? (p.itens[0].descricao||'—') : (p.descricao||p.escopo||'—');
+    var desc = p.itens && p.itens.length ? (p.itens[0].descricao||'—') : (p.descricao||_propEscopoItens(p)[0]||'—');
     var isAcabou = p.status==='aprovada'||p.status==='recusada'||p.status==='cancelada';
     var validadeStr = p.validadeDias ? p.validadeDias + ' dias' : (p.validade ? fmtDate(p.validade) : '—');
     return '<tr>'
@@ -7141,7 +7257,7 @@ function propLinhas(txt) {
   return String(txt || '').split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
 }
 
-// p = { numero, clienteNome, cidade, data (AAAA-MM-DD), escopo (texto, 1 item por linha),
+// p = { numero, clienteNome, cidade, uf, data (AAAA-MM-DD), escopo (texto, 1 item por linha),
 //       itens [{descricao, valor}], validadeDias, pagamento (texto, 1 por linha),
 //       formaPagamento (texto), outrasInfo (texto) }
 // Retorna o objeto jsPDF; quem chama decide doc.save(...)
@@ -7216,7 +7332,7 @@ function gerarPdfProposta(p) {
   doc.text('DE SERVIÇOS Nº ' + (p.numero || ''), W / 2, 47.6, { align: 'center' });
 
   y = 65.1;
-  [['Cliente: ', p.clienteNome], ['Cidade: ', p.cidade], ['Data: ', propDataExtenso(p.data)]].forEach(function(r) {
+  [['Cliente: ', p.clienteNome], ['Cidade: ', p.cidade ? p.cidade + (p.uf ? '/' + p.uf : '') : ''],['Data: ', propDataExtenso(p.data)]].forEach(function(r) {
     if (!r[1]) return;
     fonte(13, true); doc.text(r[0], ML, y);
     var w = doc.getTextWidth(r[0]);
@@ -8318,7 +8434,7 @@ function sdPopulate(prefix, items) {
     </div>
     <div class="modal-body" style="overflow-y:auto">
       <div class="form-grid">
-        <div class="field"><label>Nº Proposta *</label><input type="text" id="prop-numero" placeholder="Ex: 001/2026"></div>
+        <div class="field"><label>Nº Proposta</label><input type="text" id="prop-numero" readonly style="background:var(--surface2);cursor:default" title="Gerado automaticamente"></div>
         <div class="field"><label>Status *</label>
           <select id="prop-status">
             <option value="em_elaboracao">📝 Em elaboração</option>
@@ -8329,14 +8445,26 @@ function sdPopulate(prefix, items) {
           </select>
         </div>
         <div class="field form-full"><label>Cliente *</label>
-          <input type="text" id="prop-nome" list="prop-clientes-list" placeholder="Nome do cliente..." oninput="_propNomeSelecionado()" autocomplete="off">
-          <datalist id="prop-clientes-list"></datalist>
-          <input type="hidden" id="prop-clienteId" value="">
+          <div class="sd-wrap" id="sd-po-wrap">
+            <input type="text" class="sd-input" id="prop-nome" placeholder="Busque um cliente ou digite um nome livre..." autocomplete="off"
+              oninput="sdFilter('po');_propNomeSelecionado()" onfocus="sdOpen('po')" onblur="sdBlur('po')"
+              onclick="this.removeAttribute('readonly');sdOpen('po')">
+            <input type="hidden" id="prop-clienteId" value="">
+            <div class="sd-list" id="sd-po-list"></div>
+          </div>
         </div>
-        <div class="field"><label>Cidade</label><input type="text" id="prop-cidade" placeholder="Ex: João Pessoa - PB"></div>
+        <div class="field"><label>Cidade</label><input type="text" id="prop-cidade" placeholder="Ex: João Pessoa"></div>
+        <div class="field"><label>Estado</label><select id="prop-uf"><option value="">—</option><option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option><option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option><option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option><option>SP</option><option>TO</option></select></div>
         <div class="field"><label>Data da proposta</label><input type="date" id="prop-data"></div>
         <div class="field"><label>Validade (dias)</label><input type="number" id="prop-validade-dias" placeholder="20" min="1" style="width:100%"></div>
-        <div class="field form-full"><label>Escopo / Objeto dos serviços</label><textarea id="prop-escopo" rows="3" placeholder="Descreva o objeto dos serviços (um item por linha para o PDF)..."></textarea></div>
+      </div>
+      <!-- Escopo -->
+      <div style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+          <span style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)">Escopo / Objeto dos serviços</span>
+          <button class="btn btn-primary btn-sm" onclick="_propAdicionarEscopo()">＋ Adicionar serviço</button>
+        </div>
+        <table style="width:100%;border-collapse:collapse"><tbody id="prop-escopo-tbody"></tbody></table>
       </div>
       <!-- Itens / Valores -->
       <div style="margin-top:16px">
