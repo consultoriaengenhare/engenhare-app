@@ -1481,6 +1481,7 @@ let _propItens = [];
 let _propEscopo = [];
 let _propVincularId = null;
 let _propVincularIdPendente = null;
+let _servicoPropostaId = null;   // proposta de origem do serviço novo aberto no modal
 let _editIdFunc = null;
 
 const PROSP_STATUS = {
@@ -1927,11 +1928,13 @@ async function salvarCliente() {
       _pvProp.clienteId = obj.id;
       _pvProp.clienteNome = obj.nome_razao_social;
       _pvProp.status = 'aprovada';
-      try { await _fbSaveDoc('propostas', _pvProp.id, _pvProp); toast('✓ Proposta vinculada e aprovada'); }
+      var _pvOk = false;
+      try { await _fbSaveDoc('propostas', _pvProp.id, _pvProp); toast('✓ Proposta vinculada e aprovada'); _pvOk = true; }
       catch(e) { toast('⚠ Erro ao vincular proposta: ' + e.message, 'error'); }
     }
     _propVincularId = null;
     renderPropostas();
+    if (_pvProp && _pvOk) _propAbrirServicoDaProposta(_pvProp);
   }
 }
 
@@ -4237,6 +4240,7 @@ function getTotalPagoServico(servicoId, excludeId) {
 
 function abrirModalServico(id) {
   servicoEditId = id || null;
+  _servicoPropostaId = null;
   var s = id ? servicos.find(function(x){ return x.id === id; }) : null;
   document.getElementById('modal-serv-title').textContent = id ? 'Editar serviço' : 'Novo serviço';
 
@@ -4292,6 +4296,11 @@ async function salvarServico() {
     obs:           document.getElementById('sv-obs').value.trim(),
     createdAt:     existing ? existing.createdAt : new Date().toISOString()
   };
+  // Serviço novo aberto a partir de uma proposta aprovada; ao editar, mantém o vínculo existente
+  var _propOrigem = (!servicoEditId && _servicoPropostaId)
+    ? propostas.find(function(x){ return x.id === _servicoPropostaId; }) : null;
+  if (existing && existing.propostaId) obj.propostaId = existing.propostaId;
+  else if (_propOrigem) obj.propostaId = _propOrigem.id;
 
   var _msgSv = servicoEditId ? '✓ Serviço atualizado' : '✓ Serviço cadastrado';
   if (servicoEditId) {
@@ -4301,13 +4310,23 @@ async function salvarServico() {
   }
   try {
     await _fbSaveDoc('servicos', obj.id, obj);
-    toast(_msgSv);
+    if (_propOrigem) {
+      _propOrigem.servicoId = obj.id;
+      try {
+        await _fbSaveDoc('propostas', _propOrigem.id, _propOrigem);
+        toast('✓ Serviço Nº ' + obj.numero + ' criado a partir da proposta ' + _propOrigem.numero);
+      } catch(e2) { toast('⚠ Serviço salvo, mas erro ao vincular à proposta: ' + e2.message, 'error'); }
+    } else {
+      toast(_msgSv);
+    }
   } catch(e) {
     toast('⚠ Erro ao salvar: ' + e.message, 'error');
   }
+  _servicoPropostaId = null;
   closeModal('modal-servico');
   renderServicos();
   popularServicosSelect();
+  if (_propOrigem) renderPropostas();
 }
 
 // Migração: normaliza setor e contas de todos os pagamentos existentes
@@ -4398,12 +4417,22 @@ async function renumerarServicos() {
 
 async function excluirServico(id) {
   if (!confirm('Remover este serviço?')) return;
+  var _sExc = servicos.find(function(x){ return x.id === id; });
   servicos = servicos.filter(function(x){ return x.id !== id; });
   try {
     await _fbDeleteDoc('servicos', id);
     toast('Serviço removido');
   } catch(e) {
     toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  // Proposta de origem volta a mostrar "➕ Criar serviço"
+  var _pExc = _sExc && _sExc.propostaId
+    ? propostas.find(function(x){ return x.id === _sExc.propostaId && x.servicoId === id; }) : null;
+  if (_pExc) {
+    delete _pExc.servicoId;
+    try { await _fbSaveDoc('propostas', _pExc.id, _pExc); }
+    catch(e) { toast('⚠ Erro ao desvincular proposta: ' + e.message, 'error'); }
+    renderPropostas();
   }
   renderServicos();
 }
@@ -4528,10 +4557,11 @@ function renderServicos() {
   var html = '';
   filtered.forEach(function(s){
     var cli    = clientes.find(function(c){ return c.id === s.clienteId; });
+    var _sProp = s.propostaId ? propostas.find(function(x){ return x.id === s.propostaId; }) : null;
     var pago   = getTotalPagoServico(s.id);
     var resta  = Math.max(0, s.valorTotal - pago);
     var quitado= pago >= s.valorTotal;
-    var pct    = s.valorTotal > 0 ? Math.min(100, Math.round(pago/s.valorTotal*100)) : 0;
+    var pct  = s.valorTotal > 0 ? Math.min(100, Math.round(pago/s.valorTotal*100)) : 0;
     var barCor = quitado ? 'var(--green-mid)' : (pct >= 50 ? '#e9c46a' : 'var(--red)');
     var badge  = quitado
       ? 'background:#d8f3dc;color:#2d6a4f'
@@ -4540,7 +4570,9 @@ function renderServicos() {
     html += '<tr>'
       + '<td style="font-weight:700;color:var(--text-muted);font-size:13px">' + (s.numero||'—') + '</td>'
       + '<td style="font-weight:500">' + (cli ? cli.nome_razao_social : '—') + '</td>'
-      + '<td>' + (s.descricao||'—') + '</td>'
+      + '<td>' + (s.descricao||'—')
+      +   (_sProp ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">📝 Proposta ' + (_sProp.numero||'—') + '</div>' : '')
+      + '</td>'
       + '<td style="font-weight:600">' + fmtVal(s.valorTotal) + '</td>'
       + '<td style="color:var(--green-mid);font-weight:600">' + fmtVal(pago) + '</td>'
       + '<td>'
@@ -6139,6 +6171,7 @@ document.addEventListener('keydown', function(e) {
         _propVincularId = null;
         _propVincularIdPendente = null;
       }
+      if (aberto.id === 'modal-servico') _servicoPropostaId = null;
       closeModal(aberto.id);
     }
   }
@@ -7022,11 +7055,16 @@ async function _salvarPropostaCore(gerarPdf) {
     pagamento:      document.getElementById('prop-pagamento').value,
     formaPagamento: document.getElementById('prop-forma-pagamento').value,
     outrasInfo:     document.getElementById('prop-outras-info').value,
-    status:         (statusSelecionado === 'aprovada' && !cliId) ? 'em_elaboracao' : statusSelecionado,
+    // Aprovada sem cliente: mantém o status anterior (ou 'enviada', se nova) até o vínculo ser feito
+    status:         (statusSelecionado === 'aprovada' && !cliId)
+                      ? ((existente && existente.status) || 'enviada') : statusSelecionado,
     obs:            document.getElementById('prop-obs').value.trim(),
     criadoEm:       (existente && existente.criadoEm) || new Date().toISOString()
   };
   if (cliId) obj.clienteId = cliId;
+  if (existente && existente.servicoId) obj.servicoId = existente.servicoId;   // preserva o vínculo com o serviço
+  var _servVinc = obj.servicoId ? servicos.find(function(x){ return x.id === obj.servicoId; }) : null;
+  var _aceiteDesfeito = !!(existente && existente.status === 'aprovada' && obj.status !== 'aprovada' && _servVinc);
   var _msgPo = _editIdProp ? '✓ Proposta atualizada'
     : (numero !== sugerido ? '⚠ O nº ' + sugerido + ' já estava em uso — proposta criada como ' + numero : '✓ Proposta criada nº ' + numero);
   if (_editIdProp) {
@@ -7055,6 +7093,10 @@ async function _salvarPropostaCore(gerarPdf) {
     try { var doc = gerarPdfProposta(Object.assign({}, obj, { escopo: obj.escopoItens.join('\n') })); doc.save(nomeArquivoProposta(obj)); }
     catch(e) { toast('⚠ Erro ao gerar PDF: '+e.message,'error'); }
   }
+  if (_aceiteDesfeito) {
+    alert('O serviço Nº ' + _servVinc.numero + ' vinculado a esta proposta foi mantido. Exclua-o manualmente no módulo Serviços, se necessário.');
+  }
+  if (obj.status === 'aprovada' && obj.clienteId) _propAbrirServicoDaProposta(obj);
   if (statusSelecionado === 'aprovada' && !cliId) {
     _propVincularId = obj.id;
     _abrirModalVincular(obj);
@@ -7096,6 +7138,7 @@ async function aceitarProposta(id) {
     toast('✓ Proposta aprovada');
   } catch(e) { toast('⚠ Erro: ' + e.message, 'error'); return; }
   renderPropostas();
+  _propAbrirServicoDaProposta(p);
 }
 
 async function recusarProposta(id) {
@@ -7153,6 +7196,7 @@ async function _propConfirmarVincular() {
   _propVincularId = null;
   _propVincularIdPendente = null;
   renderPropostas();
+  _propAbrirServicoDaProposta(p);
 }
 
 function _propCadastrarNovoCliente() {
@@ -7177,6 +7221,35 @@ function _propCancelarCriacaoCliente() {
   if (_modalDirty['modal-cliente'] && !confirm('Há informações preenchidas. Deseja descartar as alterações?')) return;
   _propVincularId = null;
   closeModal('modal-cliente');
+}
+
+// Serviço existente ligado à proposta (por servicoId na proposta ou propostaId no serviço), ou null
+function _propServicoVinculado(p) {
+  if (!p) return null;
+  var s = p.servicoId ? servicos.find(function(x){ return x.id === p.servicoId; }) : null;
+  return s || servicos.find(function(x){ return x.propostaId === p.id; }) || null;
+}
+
+// Abre o formulário de novo serviço pré-preenchido com os dados de uma proposta aprovada.
+// Não faz nada se a proposta já tiver um serviço.
+function _propAbrirServicoDaProposta(p) {
+  if (typeof p === 'string') { var _pid = p; p = propostas.find(function(x){ return x.id === _pid; }); }
+  if (!p || p.status !== 'aprovada' || !p.clienteId) return;
+  if (_propServicoVinculado(p)) return;
+  abrirModalServico();               // zera _servicoPropostaId; por isso é definido logo abaixo
+  _servicoPropostaId = p.id;
+  var cli = clientes.find(function(c){ return c.id === p.clienteId; });
+  sdSetValue('sv', p.clienteId, cli ? cli.nome_razao_social : (p.clienteNome || ''));
+  var descs = (p.itens || []).map(function(it){ return String(it.descricao || '').trim(); }).filter(Boolean);
+  var desc = descs.length ? descs.join(' + ') : (_propEscopoItens(p)[0] || '');
+  document.getElementById('sv-descricao').value = desc.toUpperCase();
+  var total = Number(p.valor) || (p.itens || []).reduce(function(a, it){ return a + (Number(it.valor) || 0); }, 0);
+  if (total) setMoedaInput('sv-valor-total', total);
+  document.getElementById('sv-data-inicio').value = hojeLocal();
+  document.getElementById('sv-status').value = 'Em andamento';
+  document.getElementById('sv-obs').value = 'GERADO DA PROPOSTA ' + (p.numero || '');
+  document.getElementById('modal-serv-title').textContent = 'Novo serviço — Proposta ' + (p.numero || '');
+  clearDirty('modal-servico');
 }
 
 function fmtMoedaStr(v) {
@@ -7205,6 +7278,7 @@ function renderPropostas() {
     var s = PROP_STATUS[p.status]||{label:p.status,cls:'badge-green'};
     var desc = p.itens && p.itens.length ? (p.itens[0].descricao||'—') : (p.descricao||_propEscopoItens(p)[0]||'—');
     var isAcabou = p.status==='aprovada'||p.status==='recusada'||p.status==='cancelada';
+    var _pServ = p.status==='aprovada' ? _propServicoVinculado(p) : null;
     var validadeStr = p.validadeDias ? p.validadeDias + ' dias' : (p.validade ? fmtDate(p.validade) : '—');
     return '<tr>'
       +'<td style="font-weight:600;white-space:nowrap">'+(p.numero||'—')+'</td>'
@@ -7216,7 +7290,11 @@ function renderPropostas() {
       +'<td><span class="badge '+s.cls+'">'+s.label+'</span></td>'
       +'<td style="white-space:nowrap">'
         +(isAcabou
-          ? '<span style="color:var(--text-muted);font-size:12px">—</span>'
+          ? (p.status==='aprovada' && p.clienteId
+              ? (_pServ
+                  ? '<span style="font-size:12px;font-weight:600;color:var(--green-deep)">🔧 Serviço Nº '+(_pServ.numero||'—')+'</span>'
+                  : '<button class="btn btn-xs btn-secondary" onclick="_propAbrirServicoDaProposta(\''+p.id+'\')">➕ Criar serviço</button>')
+              : '<span style="color:var(--text-muted);font-size:12px">—</span>')
           : '<button class="btn btn-xs btn-secondary" title="Aprovar" onclick="aceitarProposta(\''+p.id+'\')">✅</button>'
            +'<button class="btn btn-xs btn-secondary" title="Recusar" onclick="recusarProposta(\''+p.id+'\')">❌</button>')
       +'</td>'
@@ -8249,7 +8327,7 @@ function sdPopulate(prefix, items) {
   <div class="modal" style="width:580px">
     <div class="modal-header">
       <h3 id="modal-serv-title">Novo serviço</h3>
-      <button class="modal-close" onclick="closeModal('modal-servico')">✕</button>
+      <button class="modal-close" onclick="_servicoPropostaId=null;closeModal('modal-servico')">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-grid">
@@ -8289,7 +8367,7 @@ function sdPopulate(prefix, items) {
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModalSafe('modal-servico')">Cancelar</button>
+      <button class="btn btn-secondary" onclick="closeModalSafe('modal-servico');if(!document.getElementById('modal-servico').classList.contains('open'))_servicoPropostaId=null">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarServico()">Salvar serviço</button>
     </div>
   </div>
