@@ -697,6 +697,9 @@ function fazerLogout() {
           <option value="LICENÇA VENCIDA">Licença Vencida</option>
           <option value="SUSPENSA">Suspensa</option>
           <option value="CANCELADA">Cancelada</option>
+          <option value="EM RENOVAÇÃO">Em Renovação</option>
+          <option value="RENOVADA">Renovada</option>
+          <option value="NÃO RENOVADA">Não Renovada</option>
         </select>
         <select id="filter-licenca-orgao" onchange="renderLicencas()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
           <option value="">Todos os órgãos</option>
@@ -2574,6 +2577,7 @@ function renderDashboard() {
     var hoje = new Date(); hoje.setHours(0,0,0,0);
     var condAlerts = [];
     licencas.forEach(function(l) {
+      if (licencaIgnoraCondAlertas(l)) return;
       (l.condicionantes||[]).forEach(function(c) {
         if (!c.prazo || c.cumprida) return;
         var p    = new Date(c.prazo + 'T00:00:00');
@@ -2604,6 +2608,7 @@ function renderDashboard() {
   function _diasValidade(l) { return Math.ceil((new Date(l.validade + 'T00:00:00') - _hojeL) / 86400000); }
   var alertas = licencas.filter(function(l){
     var s = calcSituacao(l.validade, l.situacao_especial);
+    if (s === 'EM RENOVAÇÃO') return true;
     if (s === 'PRÓXIMA DO VENCIMENTO') return true;
     return s === 'LICENÇA VENCIDA' && _diasValidade(l) >= -DIAS_APOS_VENCIMENTO;
   }).sort(function(a,b){
@@ -2613,7 +2618,9 @@ function renderDashboard() {
     ? alertas.map(function(l){
         var sit   = calcSituacao(l.validade, l.situacao_especial);
         var badge = SITUACAO_BADGE[sit] || 'background:#f0f0f0;color:#555';
-        var texto = sit === 'LICENÇA VENCIDA' ? 'Vencida há ' + Math.abs(_diasValidade(l)) + 'd' : sit;
+        var texto = sit === 'LICENÇA VENCIDA' ? 'Vencida há ' + Math.abs(_diasValidade(l)) + 'd'
+                  : sit === 'EM RENOVAÇÃO' ? 'Em renovação' + (l.renovacaoProtocolo ? ' · Prot. ' + l.renovacaoProtocolo : '')
+                  : sit;
         return '<tr>'
           + '<td style="font-weight:500;font-size:12px;max-width:100px;white-space:normal;line-height:1.3">' + (l.razao_social||'—') + '</td>'
           + '<td style="font-size:12px;font-weight:600">' + siglaLicenca(l.tipo) + '</td>'
@@ -3368,13 +3375,37 @@ var SITUACAO_BADGE = (function() {
   m['LICEN\u00c7A VENCIDA']       = 'background:#fce8e8;color:#c1666b';
   m['SUSPENSA']                  = 'background:#fff0e0;color:#b05a00';
   m['CANCELADA']                 = 'background:#f0f0f0;color:#555';
+  m['EM RENOVAÇÃO']          = 'background:#e6f1fb;color:#185fa5';
+  m['RENOVADA']                  = 'background:#eaf7d9;color:#4d7a1f';
+  m['NÃO RENOVADA']             = 'background:#e4e4e4;color:#444';
   return m;
 }());
+
+var SITUACOES_ESPECIAIS = ['SUSPENSA','CANCELADA','EM RENOVAÇÃO','RENOVADA','NÃO RENOVADA'];
+
+// Condicionantes destas licenças não geram alertas
+function licencaIgnoraCondAlertas(l) {
+  return ['RENOVADA','NÃO RENOVADA','CANCELADA'].indexOf(l.situacao_especial) !== -1;
+}
+
+// Antecedência do protocolo de renovação (LC 140/2011, art. 14, §4º)
+function calcRenovacaoInfo(protocoloData, validade) {
+  if (!protocoloData || !validade) return null;
+  var dias = Math.round((new Date(validade + 'T00:00:00') - new Date(protocoloData + 'T00:00:00')) / 86400000);
+  var prorrogada = dias >= 120;
+  return {
+    dias: dias,
+    prorrogada: prorrogada,
+    texto: prorrogada
+      ? 'Prorrogada automaticamente (LC 140/2011, art. 14, §4º)'
+      : 'Protocolo com menos de 120 dias de antecedência: a prorrogação automática não se aplica'
+  };
+}
 
 // Calcula a situação automaticamente pela data de validade
 // Retorna string com o status calculado
 function calcSituacao(validade, especial) {
-  if (especial === 'SUSPENSA' || especial === 'CANCELADA') return especial;
+  if (SITUACOES_ESPECIAIS.indexOf(especial) !== -1) return especial;
   if (!validade) return '—';
   var hoje = new Date();
   hoje.setHours(0,0,0,0);
@@ -3397,6 +3428,34 @@ function atualizarSituacaoPreview() {
   var badge = SITUACAO_BADGE[sit] || 'background:var(--surface2);color:var(--text-muted)';
   preview.style.cssText = 'padding:10px 14px;border-radius:8px;font-size:14px;font-weight:500;border:1px solid transparent;' + badge;
   preview.textContent = sit === '—' ? 'Calculado automaticamente pela data de validade' : sit;
+
+  // Campos extras conforme a situação especial
+  document.getElementById('li-esp-renovacao').style.display   = especial === 'EM RENOVAÇÃO' ? 'block' : 'none';
+  document.getElementById('li-esp-renovada').style.display    = especial === 'RENOVADA'     ? 'block' : 'none';
+  document.getElementById('li-esp-naorenovada').style.display = especial === 'NÃO RENOVADA' ? 'block' : 'none';
+  if (especial === 'RENOVADA') preencherSelectRenovadaPor();
+  var info = calcRenovacaoInfo(document.getElementById('li-renovacao-data').value, validade);
+  var infoEl = document.getElementById('li-renovacao-info');
+  infoEl.style.display = info ? 'block' : 'none';
+  if (info) {
+    infoEl.style.cssText = 'margin-top:8px;padding:8px 12px;border-radius:8px;font-size:13px;' + (info.prorrogada ? 'background:#d8f3dc;color:#2d6a4f' : 'background:#fdf3d0;color:#8a6200');
+    infoEl.textContent = (info.prorrogada ? '✓ ' : '⚠ ') + info.texto + ' — ' + info.dias + ' dias de antecedência';
+  }
+}
+
+// Lista as licenças do mesmo cliente (exceto a atual) para "Renovada por"
+function preencherSelectRenovadaPor(selecionado) {
+  var sel = document.getElementById('li-renovada-por');
+  var atual = selecionado !== undefined ? selecionado : sel.value;
+  var cid = document.getElementById('li-razao').value;
+  var cli = clientes.find(function(c){ return c.id === cid; });
+  var razao = cli ? cli.nome_razao_social : (document.getElementById('li-razao-search').value || '');
+  var opts = licencas.filter(function(x){ return x.id !== licencaEditId && razao && x.razao_social === razao; });
+  sel.innerHTML = '<option value="">Selecione a licença nova...</option>' + opts.map(function(x){
+    return '<option value="' + x.id + '"' + (x.id === atual ? ' selected' : '') + '>'
+      + 'Nº ' + (x.numero || '—') + ' — ' + siglaLicenca(x.tipo) + ' / ' + (x.orgao || '') + (x.validade ? ' — val. ' + fmtDate(x.validade) : '')
+      + '</option>';
+  }).join('');
 }
 
 function toggleOutroTipo() {
@@ -3420,6 +3479,7 @@ function licencaAutoFill() {
     var end = [cli.logradouro, cli.endereco, cli.numero, cli.complemento, cli.bairro, cli.cidade, cli.estado].filter(Boolean).join(', ');
     document.getElementById('li-endereco').value = end;
   }
+  if (document.getElementById('li-situacao-especial').value === 'RENOVADA') preencherSelectRenovadaPor('');
 }
 
 function abrirModalLicenca(id) {
@@ -3463,11 +3523,16 @@ function abrirModalLicenca(id) {
   document.getElementById('li-validade').value  = l ? (l.validade||'')  : '';
 
   // Situação: especial ou automática
-  var especiais = ['SUSPENSA','CANCELADA'];
+  var especiais = SITUACOES_ESPECIAIS;
   var isEspecial = l && especiais.indexOf(l.situacao_especial) !== -1;
   document.getElementById('li-situacao-manual').checked = isEspecial;
   document.getElementById('li-situacao-especial').value = isEspecial ? l.situacao_especial : 'SUSPENSA';
   document.getElementById('li-situacao-especial').style.display = isEspecial ? 'block' : 'none';
+  document.getElementById('li-renovacao-protocolo').value = l ? (l.renovacaoProtocolo||'') : '';
+  document.getElementById('li-renovacao-data').value      = l ? (l.renovacaoData||'')      : '';
+  document.getElementById('li-naorenovada-motivo').value  = l ? (l.naoRenovadaMotivo||'')  : '';
+  document.getElementById('li-naorenovada-data').value    = l ? (l.naoRenovadaData||'')    : '';
+  preencherSelectRenovadaPor(l ? (l.renovadaPorId||'') : '');
   atualizarSituacaoPreview();
 
   carregarCondicionantes(l ? l.condicionantes : []);
@@ -3478,6 +3543,7 @@ async function salvarLicenca() {
   var orgao = document.getElementById('li-orgao').value.trim();
   if (!orgao) { toast('⚠ Informe o órgão emissor'); return; }
   var existing = licencaEditId ? licencas.find(function(x){ return x.id === licencaEditId; }) : null;
+  var _esp = document.getElementById('li-situacao-manual').checked ? document.getElementById('li-situacao-especial').value : null;
   var obj = {
     id: licencaEditId || genId(),
     numero:     document.getElementById('li-numero').value.trim(),
@@ -3490,12 +3556,19 @@ async function salvarLicenca() {
     endereco:   document.getElementById('li-endereco').value.trim(),
     emissao:    document.getElementById('li-emissao').value,
     validade:   document.getElementById('li-validade').value,
-    situacao_especial: document.getElementById('li-situacao-manual').checked ? document.getElementById('li-situacao-especial').value : null,
-    situacao:   calcSituacao(document.getElementById('li-validade').value, document.getElementById('li-situacao-manual').checked ? document.getElementById('li-situacao-especial').value : null),
+    situacao_especial: _esp,
+    situacao:   calcSituacao(document.getElementById('li-validade').value, _esp),
+    renovacaoProtocolo: _esp === 'EM RENOVAÇÃO' ? document.getElementById('li-renovacao-protocolo').value.trim() : null,
+    renovacaoData:      _esp === 'EM RENOVAÇÃO' ? (document.getElementById('li-renovacao-data').value || null) : null,
+    renovadaPorId:      _esp === 'RENOVADA'     ? (document.getElementById('li-renovada-por').value || null) : null,
+    naoRenovadaMotivo:  _esp === 'NÃO RENOVADA' ? document.getElementById('li-naorenovada-motivo').value.trim() : null,
+    naoRenovadaData:    _esp === 'NÃO RENOVADA' ? (document.getElementById('li-naorenovada-data').value || null) : null,
     condicionantes: getCondicionantes(),
     createdAt:  existing ? existing.createdAt : new Date().toISOString()
   };
   var _msgLi = licencaEditId ? '✓ Licença atualizada' : '✓ Licença cadastrada';
+  var _renInfo = _esp === 'EM RENOVAÇÃO' ? calcRenovacaoInfo(obj.renovacaoData, obj.validade) : null;
+  if (_renInfo) _msgLi += ' — ' + (_renInfo.prorrogada ? '' : '⚠ ') + _renInfo.texto;
   if (licencaEditId) {
     licencas = licencas.map(function(x){ return x.id === licencaEditId ? obj : x; });
   } else {
@@ -3540,9 +3613,22 @@ function visualizarLicenca(id) {
     ['Data de Emissão', fmtDate(l.emissao)], ['Data de Validade', fmtDate(l.validade)],
     ['Situação', sit]
   ];
+  // Campos da situação especial
+  if (l.situacao_especial === 'EM RENOVAÇÃO') {
+    campos.push(['Protocolo de Renovação', l.renovacaoProtocolo], ['Data do Protocolo', fmtDate(l.renovacaoData)]);
+    var _ri = calcRenovacaoInfo(l.renovacaoData, l.validade);
+    if (_ri) campos.push(['Prorrogação', _ri.texto + ' (' + _ri.dias + ' dias de antecedência)']);
+  } else if (l.situacao_especial === 'RENOVADA') {
+    var _nova = l.renovadaPorId ? licencas.find(function(x){ return x.id === l.renovadaPorId; }) : null;
+    campos.push(['Renovada pela licença', _nova ? 'Nº ' + (_nova.numero||'—') + ' — ' + (_nova.tipo||'') : '']);
+  } else if (l.situacao_especial === 'NÃO RENOVADA') {
+    campos.push(['Data da Não Renovação', fmtDate(l.naoRenovadaData)], ['Motivo', l.naoRenovadaMotivo]);
+  }
+  var _anteriores = licencas.filter(function(x){ return x.renovadaPorId === l.id; });
+  if (_anteriores.length) campos.push(['Renovação', _anteriores.map(function(x){ return 'Renovação da licença Nº ' + (x.numero||'—'); }).join('; ')]);
   var html = '<div class="detail-grid">';
   campos.forEach(function(par) {
-    var isFull = (par[0]==='Endereço'||par[0]==='Atividade'||par[0]==='Tipo de Licença');
+    var isFull = ['Endereço','Atividade','Tipo de Licença','Prorrogação','Renovada pela licença','Motivo','Renovação'].indexOf(par[0]) !== -1;
     var valHtml = (par[0]==='Situação' && badge)
       ? '<span class="badge" style="' + badge + '">' + (par[1]||'—') + '</span>'
       : (par[1]||'—');
@@ -3716,14 +3802,20 @@ function exportarPDFLicenca() {
     'PRÓXIMA DO VENCIMENTO': [253,243,208],
     'LICENÇA VENCIDA':       [252,232,232],
     'SUSPENSA':              [255,240,224],
-    'CANCELADA':             [240,240,240]
+    'CANCELADA':             [240,240,240],
+    'EM RENOVAÇÃO':          [230,241,251],
+    'RENOVADA':              [234,247,217],
+    'NÃO RENOVADA':          [228,228,228]
   };
   var sitTexto = {
     'LICENÇA VÁLIDA':        [29,90,60],
     'PRÓXIMA DO VENCIMENTO': [138,98,0],
     'LICENÇA VENCIDA':       [193,102,107],
     'SUSPENSA':              [176,90,0],
-    'CANCELADA':             [85,85,85]
+    'CANCELADA':             [85,85,85],
+    'EM RENOVAÇÃO':          [24,95,165],
+    'RENOVADA':              [77,122,31],
+    'NÃO RENOVADA':          [68,68,68]
   };
   var bc = sitCores[sit]  || [240,240,240];
   var bt = sitTexto[sit] || [85,85,85];
@@ -3801,6 +3893,33 @@ function exportarPDFLicenca() {
   secao('Validade e Situação');
   duasColunas(['Data de Emissão', fmtDate(l.emissao)], ['Data de Validade', fmtDate(l.validade)]);
   linha('Situação', sit);
+  function linhaMulti(label, valor) {
+    var larg = W - margem*2;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    var linhas = doc.splitTextToSize(valor || '—', larg - 4);
+    var alt = 4.5 + linhas.length * 4.2 + 1.5;
+    if (y + alt > 278) { doc.addPage(); y = 18; }
+    doc.setFillColor.apply(doc, cinzaClaro); doc.rect(margem, y, larg, alt, 'F');
+    doc.setDrawColor(212, 228, 216); doc.rect(margem, y, larg, alt, 'S');
+    doc.setTextColor.apply(doc, muted); doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
+    doc.text(label.toUpperCase(), col + 2, y + 3.5);
+    doc.setTextColor.apply(doc, texto); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    doc.text(linhas, col + 2, y + 7.2);
+    y += alt + 2;
+  }
+  if (l.situacao_especial === 'EM RENOVAÇÃO') {
+    duasColunas(['Protocolo de Renovação', l.renovacaoProtocolo], ['Data do Protocolo', l.renovacaoData ? fmtDate(l.renovacaoData) : '']);
+    var _riPdf = calcRenovacaoInfo(l.renovacaoData, l.validade);
+    if (_riPdf) linhaMulti('Prorrogação', _riPdf.texto + ' (' + _riPdf.dias + ' dias de antecedência)');
+  } else if (l.situacao_especial === 'RENOVADA') {
+    var _novaPdf = l.renovadaPorId ? licencas.find(function(x){ return x.id === l.renovadaPorId; }) : null;
+    linhaMulti('Renovada pela licença', _novaPdf ? 'Nº ' + (_novaPdf.numero||'—') + ' — ' + (_novaPdf.tipo||'') : '');
+  } else if (l.situacao_especial === 'NÃO RENOVADA') {
+    linha('Data da Não Renovação', l.naoRenovadaData ? fmtDate(l.naoRenovadaData) : '');
+    linhaMulti('Motivo', l.naoRenovadaMotivo);
+  }
+  var _antPdf = licencas.filter(function(x){ return x.renovadaPorId === l.id; });
+  if (_antPdf.length) linhaMulti('Renovação', _antPdf.map(function(x){ return 'Renovação da licença Nº ' + (x.numero||'—'); }).join('; '));
   y += 2;
 
   // Seção Condicionantes
@@ -5808,6 +5927,8 @@ async function duplicarLicenca(id) {
   nova.validade  = '';
   nova.situacao  = 'LICENÇA VÁLIDA';
   nova.situacao_especial = null;
+  nova.renovacaoProtocolo = null; nova.renovacaoData = null; nova.renovadaPorId = null;
+  nova.naoRenovadaMotivo = null; nova.naoRenovadaData = null;
   nova.condicionantes = [];
   nova.createdAt = new Date().toISOString();
   licencas.unshift(nova);
@@ -6070,6 +6191,7 @@ function verificarAlertasAbertura() {
 
   // Condicionantes com prazo próximo
   licencas.forEach(function(l) {
+    if (licencaIgnoraCondAlertas(l)) return;
     (l.condicionantes||[]).forEach(function(c) {
       if (!c.prazo || c.cumprida) return;
       var p = new Date(c.prazo + 'T00:00:00');
@@ -6371,6 +6493,7 @@ function googleColetarItensParaAlertar() {
   });
 
   licencas.forEach(function(l) {
+    if (licencaIgnoraCondAlertas(l)) return;
     (l.condicionantes || []).forEach(function(c) {
       if (!c.prazo || c.cumprida) return;
       var p    = new Date(c.prazo + 'T00:00:00');
@@ -8204,13 +8327,32 @@ function sdPopulate(prefix, items) {
             <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
               <input type="checkbox" id="li-situacao-manual" onchange="atualizarSituacaoPreview()" style="width:16px;height:16px;cursor:pointer">
               <label for="li-situacao-manual" style="font-size:13px;color:var(--text-muted);cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0">
-                Substituir por situação especial (Suspensa / Cancelada)
+                Substituir por situação especial (Suspensa / Cancelada / Em renovação / Renovada / Não renovada)
               </label>
             </div>
             <select id="li-situacao-especial" onchange="atualizarSituacaoPreview()" style="display:none;margin-top:8px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);outline:none">
               <option value="SUSPENSA">Suspensa</option>
               <option value="CANCELADA">Cancelada</option>
+              <option value="EM RENOVAÇÃO">Em renovação</option>
+              <option value="RENOVADA">Renovada</option>
+              <option value="NÃO RENOVADA">Não renovada</option>
             </select>
+            <div id="li-esp-renovacao" style="display:none;margin-top:10px">
+              <div class="form-grid">
+                <div class="field"><label>Nº do protocolo de renovação</label><input type="text" id="li-renovacao-protocolo" placeholder="Nº do protocolo" oninput="fmtUpper(this)"></div>
+                <div class="field"><label>Data do protocolo</label><input type="date" id="li-renovacao-data" onchange="atualizarSituacaoPreview()"></div>
+              </div>
+              <div id="li-renovacao-info" style="display:none"></div>
+            </div>
+            <div id="li-esp-renovada" style="display:none;margin-top:10px">
+              <div class="field"><label>Renovada pela licença</label><select id="li-renovada-por"><option value="">Selecione a licença nova...</option></select></div>
+            </div>
+            <div id="li-esp-naorenovada" style="display:none;margin-top:10px">
+              <div class="form-grid">
+                <div class="field"><label>Data</label><input type="date" id="li-naorenovada-data"></div>
+                <div class="field form-full"><label>Motivo</label><input type="text" id="li-naorenovada-motivo" placeholder="Motivo da não renovação" oninput="fmtUpper(this)"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
