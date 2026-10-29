@@ -311,6 +311,7 @@ function fazerLogout() {
   .cond-ok      { background:var(--green-pale); color:var(--green-mid); }
   .cond-alerta  { background:var(--amber-pale); color:#8a6200; }
   .cond-vencida { background:var(--red-pale);   color:var(--red); }
+  .cond-cumprida{ background:var(--green-pale); color:var(--green-mid); border:1px solid var(--green-light); }
   .tab-group { display:flex; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:4px; gap:4px; width:fit-content; margin-bottom:24px; }
   .tab-btn { padding:8px 20px; border:none; border-radius:7px; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; background:transparent; color:var(--text-muted); transition:all .18s; }
   .tab-btn:hover { background:var(--surface); color:var(--text); }
@@ -962,6 +963,7 @@ function fazerLogout() {
           <option value="alerta">Próximo do prazo</option>
           <option value="vencida">Prazo perdido</option>
           <option value="sem-prazo">Sem prazo definido</option>
+          <option value="cumprida">Cumprida</option>
         </select>
         <select id="sort-cond-mod" onchange="renderCondicionantesMod()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface2);outline:none;cursor:pointer">
           <option value="prazo">Prazo mais próximo 1º</option>
@@ -978,6 +980,7 @@ function fazerLogout() {
               <th>Condicionante</th>
               <th>Prazo</th>
               <th>Status</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="tbody-condicionantes-mod"></tbody>
@@ -2572,10 +2575,10 @@ function renderDashboard() {
     var condAlerts = [];
     licencas.forEach(function(l) {
       (l.condicionantes||[]).forEach(function(c) {
-        if (!c.prazo) return;
+        if (!c.prazo || c.cumprida) return;
         var p    = new Date(c.prazo + 'T00:00:00');
         var dias = Math.ceil((p - hoje) / 86400000);
-        if (dias >= 0 && dias <= 45) {
+        if (dias >= -DIAS_APOS_VENCIMENTO && dias <= 45) {
           condAlerts.push({ empresa: l.razao_social||'—', descricao: c.descricao||'—', prazo: c.prazo, dias: dias });
         }
       });
@@ -2583,12 +2586,13 @@ function renderDashboard() {
     condAlerts.sort(function(a,b){ return a.prazo.localeCompare(b.prazo); });
     dc.innerHTML = condAlerts.length
       ? condAlerts.map(function(c){
-          var cor = c.dias <= 15 ? 'background:#fce8e8;color:#c1666b' : 'background:#fdf3d0;color:#8a6200';
+          var cor   = c.dias <= 15 ? 'background:#fce8e8;color:#c1666b' : 'background:#fdf3d0;color:#8a6200';
+          var texto = c.dias < 0 ? 'Vencida há ' + Math.abs(c.dias) + 'd' : c.dias + 'd';
           return '<tr>'
             + '<td style="font-weight:500;font-size:12px;max-width:90px;white-space:normal;line-height:1.3">' + c.empresa + '</td>'
             + '<td style="font-size:12px;max-width:120px;white-space:normal;line-height:1.3">' + c.descricao + '</td>'
             + '<td style="font-size:12px;font-weight:600;white-space:nowrap">' + fmtDate(c.prazo) + '</td>'
-            + '<td><span class="badge" style="' + cor + ';font-size:11px">' + c.dias + 'd</span></td>'
+            + '<td><span class="badge" style="' + cor + ';font-size:11px">' + texto + '</span></td>'
             + '</tr>';
         }).join('')
       : '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma condicionante próxima do vencimento</td></tr>';
@@ -2596,9 +2600,12 @@ function renderDashboard() {
 
   // Licenças próximas do vencimento (ordenadas pela validade)
   var dl = document.getElementById('dash-licencas');
+  var _hojeL = new Date(); _hojeL.setHours(0,0,0,0);
+  function _diasValidade(l) { return Math.ceil((new Date(l.validade + 'T00:00:00') - _hojeL) / 86400000); }
   var alertas = licencas.filter(function(l){
     var s = calcSituacao(l.validade, l.situacao_especial);
-    return s === 'PRÓXIMA DO VENCIMENTO' || s === 'LICENÇA VENCIDA';
+    if (s === 'PRÓXIMA DO VENCIMENTO') return true;
+    return s === 'LICENÇA VENCIDA' && _diasValidade(l) >= -DIAS_APOS_VENCIMENTO;
   }).sort(function(a,b){
     return (a.validade||'').localeCompare(b.validade||'');
   });
@@ -2606,11 +2613,12 @@ function renderDashboard() {
     ? alertas.map(function(l){
         var sit   = calcSituacao(l.validade, l.situacao_especial);
         var badge = SITUACAO_BADGE[sit] || 'background:#f0f0f0;color:#555';
+        var texto = sit === 'LICENÇA VENCIDA' ? 'Vencida há ' + Math.abs(_diasValidade(l)) + 'd' : sit;
         return '<tr>'
           + '<td style="font-weight:500;font-size:12px;max-width:100px;white-space:normal;line-height:1.3">' + (l.razao_social||'—') + '</td>'
           + '<td style="font-size:12px;font-weight:600">' + siglaLicenca(l.tipo) + '</td>'
           + '<td style="font-size:12px;font-weight:600;white-space:nowrap">' + fmtDate(l.validade) + '</td>'
-          + '<td><span class="badge" style="' + badge + ';font-size:11px">' + sit + '</span></td>'
+          + '<td><span class="badge" style="' + badge + ';font-size:11px">' + texto + '</span></td>'
           + '</tr>';
       }).join('')
     : '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma licença próxima do vencimento</td></tr>';
@@ -3547,7 +3555,7 @@ function visualizarLicenca(id) {
     html += '<div style="margin-top:16px">';
     html += '<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Condicionantes</div>';
     l.condicionantes.forEach(function(c, i) {
-      var status = calcStatusCond(c.prazo);
+      var status = calcStatusCond(c.prazo, c.cumprida, c.dataCumprimento);
       var badgeHtml = status ? '<span class="cond-status ' + status.cls + '">' + status.label + '</span>' : '';
       html += '<div class="cond-card" style="margin-bottom:8px">';
       html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
@@ -3799,13 +3807,15 @@ function exportarPDFLicenca() {
   if (l.condicionantes && l.condicionantes.length > 0) {
     secao('Condicionantes');
     l.condicionantes.forEach(function(c, i) {
-      var statusC = calcStatusCond(c.prazo);
+      var statusC = calcStatusCond(c.prazo, c.cumprida, c.dataCumprimento);
 
       // Cores de fundo e texto do badge por status
       var bgBadge, txtBadge;
       if (!statusC) {
         bgBadge = null; txtBadge = null;
       } else if (statusC.cls === 'cond-ok') {
+        bgBadge = [216,243,220]; txtBadge = [29,90,60];
+      } else if (statusC.cls === 'cond-cumprida') {
         bgBadge = [216,243,220]; txtBadge = [29,90,60];
       } else if (statusC.cls === 'cond-alerta') {
         bgBadge = [253,243,208]; txtBadge = [138,98,0];
@@ -3887,7 +3897,11 @@ function exportarPDFLicenca() {
 // ── CONDICIONANTES ────────────────────────────────────
 var condIdCounter = 0;
 
-function calcStatusCond(prazo) {
+function calcStatusCond(prazo, cumprida, dataCumprimento) {
+  if (cumprida) {
+    var dt = dataCumprimento ? fmtDate(dataCumprimento) : '';
+    return { cls:'cond-cumprida', label:'✔ Cumprida' + (dt ? ' em ' + dt : ''), labelPdf:'Cumprida' + (dt ? ' em ' + dt : '') };
+  }
   if (!prazo) return null;
   var hoje = new Date(); hoje.setHours(0,0,0,0);
   var p    = new Date(prazo + 'T00:00:00');
@@ -3909,8 +3923,10 @@ function adicionarCondicionante(dados) {
   var cid   = 'cond-' + (++condIdCounter);
   var desc  = dados ? (dados.descricao||'') : '';
   var prazo = dados ? (dados.prazo||'') : '';
+  var cumprida = !!(dados && dados.cumprida);
+  var dataCump = (dados && dados.dataCumprimento) || '';
 
-  var status = calcStatusCond(prazo);
+  var status = calcStatusCond(prazo, cumprida, dataCump);
   var badgeHtml = status
     ? '<span class="cond-status ' + status.cls + '">' + status.label + '</span>'
     : '';
@@ -3928,16 +3944,34 @@ function adicionarCondicionante(dados) {
     + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
     + '  <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">Prazo de entrega</label>'
     + '  <input type="date" id="' + cid + '-prazo" value="' + prazo + '" onchange="atualizarBadgeCond(\'' + cid + '\')" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;outline:none">'
+    + '  <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;cursor:pointer;margin-left:auto">'
+    + '    <input type="checkbox" id="' + cid + '-cumprida"' + (cumprida ? ' checked' : '') + ' onchange="toggleCumpridaCond(\'' + cid + '\')"> Cumprida</label>'
+    + '  <span id="' + cid + '-datacump-wrap" style="display:' + (cumprida ? 'flex' : 'none') + ';align-items:center;gap:8px">'
+    + '    <label style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">Cumprida em</label>'
+    + '    <input type="date" id="' + cid + '-datacump" value="' + dataCump + '" onchange="atualizarBadgeCond(\'' + cid + '\')" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;outline:none">'
+    + '  </span>'
     + '</div>';
   lista.appendChild(div);
   renderCondVazio();
+}
+
+function toggleCumpridaCond(cid) {
+  var chk  = document.getElementById(cid + '-cumprida');
+  var wrap = document.getElementById(cid + '-datacump-wrap');
+  var dt   = document.getElementById(cid + '-datacump');
+  if (!chk || !wrap || !dt) return;
+  wrap.style.display = chk.checked ? 'flex' : 'none';
+  if (chk.checked && !dt.value) dt.value = hojeLocal();
+  atualizarBadgeCond(cid);
 }
 
 function atualizarBadgeCond(cid) {
   var prazoEl = document.getElementById(cid + '-prazo');
   var badgeEl = document.getElementById(cid + '-badge');
   if (!prazoEl || !badgeEl) return;
-  var status = calcStatusCond(prazoEl.value);
+  var chkEl  = document.getElementById(cid + '-cumprida');
+  var dtEl   = document.getElementById(cid + '-datacump');
+  var status = calcStatusCond(prazoEl.value, !!(chkEl && chkEl.checked), dtEl ? dtEl.value : '');
   badgeEl.innerHTML = status ? '<span class="cond-status ' + status.cls + '">' + status.label + '</span>' : '';
 }
 
@@ -3955,7 +3989,9 @@ function getCondicionantes() {
     var cid   = div.id;
     var desc  = (document.getElementById(cid + '-desc')  || {value:''}).value.trim();
     var prazo = (document.getElementById(cid + '-prazo') || {value:''}).value;
-    if (desc || prazo) result.push({ descricao: desc, prazo: prazo });
+    var cumprida = !!(document.getElementById(cid + '-cumprida') || {}).checked;
+    var dataCump = cumprida ? (document.getElementById(cid + '-datacump') || {value:''}).value : '';
+    if (desc || prazo) result.push({ descricao: desc, prazo: prazo, cumprida: cumprida, dataCumprimento: dataCump });
   });
   return result;
 }
@@ -5040,9 +5076,11 @@ function renderCondicionantesMod() {
     if (!l.condicionantes || !l.condicionantes.length) return;
     var cli = clientes.find(function(c){ return c.id === l.razao_social || c.nome_razao_social === l.razao_social; });
     l.condicionantes.forEach(function(c, i) {
-      var status = calcStatusCond(c.prazo);
-      var cls = status ? status.cls : 'sem-prazo';
+      var status = calcStatusCond(c.prazo, c.cumprida, c.dataCumprimento);
       todas.push({
+        licId:     l.id,
+        idx:       i,
+        cumprida:  !!c.cumprida,
         empresa:   l.razao_social || '—',
         licenca:   (l.tipo ? l.tipo.split(' ')[0] + (l.numero ? ' ' + l.numero : '') : (l.numero || '—')),
         orgao:     l.orgao || '—',
@@ -5061,6 +5099,7 @@ function renderCondicionantesMod() {
     if (filtSt === 'alerta'   && r.cls !== 'cond-alerta')  return false;
     if (filtSt === 'vencida'  && r.cls !== 'cond-vencida') return false;
     if (filtSt === 'sem-prazo'&& r.prazo !== '')           return false;
+    if (filtSt === 'cumprida' && !r.cumprida)              return false;
     if (!q) return true;
     return r.empresa.toLowerCase().includes(q) ||
            r.licenca.toLowerCase().includes(q) ||
@@ -5081,7 +5120,7 @@ function renderCondicionantesMod() {
   if (!tbody) return;
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📌</div><strong>Nenhuma condicionante encontrada</strong><p style="margin-top:6px;font-size:14px">Adicione condicionantes no módulo de Licenças</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📌</div><strong>Nenhuma condicionante encontrada</strong><p style="margin-top:6px;font-size:14px">Adicione condicionantes no módulo de Licenças</p></div></td></tr>';
     return;
   }
 
@@ -5093,6 +5132,9 @@ function renderCondicionantesMod() {
     } else if (!r.prazo) {
       badgeHtml = '<span style="color:var(--text-muted);font-size:12px">Sem prazo</span>';
     }
+    var btnHtml = r.cumprida
+      ? '<button type="button" class="btn btn-secondary btn-sm" onclick="desfazerCondCumprida(\'' + r.licId + '\',' + r.idx + ')">↺ Desfazer</button>'
+      : '<button type="button" class="btn btn-primary btn-sm" onclick="marcarCondCumprida(\'' + r.licId + '\',' + r.idx + ')">✔ Cumprir</button>';
     html += '<tr>'
       + '<td style="font-weight:500">' + r.empresa + '</td>'
       + '<td style="font-size:13px;font-weight:600">' + r.licenca + '</td>'
@@ -5100,9 +5142,46 @@ function renderCondicionantesMod() {
       + '<td style="font-size:13px;max-width:220px;white-space:normal">' + r.descricao + '</td>'
       + '<td style="font-size:13px;white-space:nowrap">' + (r.prazo ? fmtDate(r.prazo) : '—') + '</td>'
       + '<td>' + badgeHtml + '</td>'
+      + '<td style="white-space:nowrap">' + btnHtml + '</td>'
       + '</tr>';
   });
   tbody.innerHTML = html;
+}
+
+// Grava a marcação de cumprimento na licença inteira (identifica a condicionante pela licença + índice)
+async function _salvarCondCumprida(licId, idx, cumprida, dataCumprimento) {
+  var l = licencas.find(function(x){ return x.id === licId; });
+  var c = l && l.condicionantes && l.condicionantes[idx];
+  if (!c) { toast('⚠ Condicionante não encontrada', 'error'); return; }
+  var antes = { cumprida: c.cumprida, dataCumprimento: c.dataCumprimento };
+  c.cumprida = cumprida;
+  c.dataCumprimento = dataCumprimento;
+  try {
+    await _fbSaveDoc('licencas', l.id, l);
+    toast(cumprida ? '✓ Condicionante marcada como cumprida' : '✓ Marcação de cumprimento desfeita');
+  } catch(e) {
+    c.cumprida = antes.cumprida;
+    c.dataCumprimento = antes.dataCumprimento;
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
+  renderCondicionantesMod();
+}
+
+function marcarCondCumprida(licId, idx) {
+  var h = hojeLocal().split('-');
+  var resp = prompt('Data de cumprimento (DD/MM/AAAA):', h[2] + '/' + h[1] + '/' + h[0]);
+  if (resp === null) return;
+  var m = resp.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  var d = m && new Date(+m[3], +m[2] - 1, +m[1]);
+  if (!m || d.getFullYear() !== +m[3] || d.getMonth() !== +m[2] - 1 || d.getDate() !== +m[1]) {
+    toast('⚠ Data inválida — use DD/MM/AAAA', 'error');
+    return;
+  }
+  _salvarCondCumprida(licId, idx, true, m[3] + '-' + m[2] + '-' + m[1]);
+}
+
+function desfazerCondCumprida(licId, idx) {
+  _salvarCondCumprida(licId, idx, false, '');
 }
 
 // ── BACKUP / RESTAURAÇÃO ──────────────────────────────
@@ -5981,7 +6060,7 @@ function verificarAlertasAbertura() {
     if (!l.validade || l.situacao_especial) return;
     var venc = new Date(l.validade + 'T00:00:00');
     var dias = Math.ceil((venc - hoje) / 86400000);
-    if (dias <= 30) {
+    if (dias >= -DIAS_APOS_VENCIMENTO && dias <= 30) {
       alertas.push({
         tipo: dias < 0 ? '🔴' : '🟡',
         msg: (dias < 0 ? 'Licença vencida há ' + Math.abs(dias) + 'd' : 'Licença vence em ' + dias + 'd') + ' — ' + (l.razao_social||'') + ' (' + siglaLicenca(l.tipo) + '/' + (l.orgao||'') + ')'
@@ -5992,10 +6071,10 @@ function verificarAlertasAbertura() {
   // Condicionantes com prazo próximo
   licencas.forEach(function(l) {
     (l.condicionantes||[]).forEach(function(c) {
-      if (!c.prazo) return;
+      if (!c.prazo || c.cumprida) return;
       var p = new Date(c.prazo + 'T00:00:00');
       var dias = Math.ceil((p - hoje) / 86400000);
-      if (dias <= 15) {
+      if (dias >= -DIAS_APOS_VENCIMENTO && dias <= 15) {
         alertas.push({
           tipo: dias < 0 ? '🔴' : '🟠',
           msg: (dias < 0 ? 'Condicionante vencida há ' + Math.abs(dias) + 'd' : 'Condicionante vence em ' + dias + 'd') + ' — ' + (l.razao_social||'')
@@ -6202,6 +6281,7 @@ var GOOGLE_SCOPES       = 'https://www.googleapis.com/auth/calendar https://www.
 var ALERTA_EMAIL_DEST   = 'consultoriaengenhare@gmail.com';
 var DIAS_ALERTA_LICENCA = 120;
 var DIAS_ALERTA_COND    = 45;
+var DIAS_APOS_VENCIMENTO = 10;   // vencidas continuam nos painéis/pop-up por até N dias após a validade
 var CHAVE_ULTIMO_ALERTA = 'eng_ultimo_alerta_google';
 
 var _googleToken = null;
@@ -6229,9 +6309,12 @@ function googleObterToken() {
         _googleToken = resp.access_token;
         setTimeout(function() { _googleToken = null; }, (resp.expires_in - 60) * 1000);
         resolve(_googleToken);
+      },
+      error_callback: function(err) {   // pop-up fechado/bloqueado: sem isso a Promise nunca termina
+        reject(new Error((err && err.type) || 'popup_error'));
       }
     });
-    cliente.requestAccessToken({ prompt: 'consent' });
+    cliente.requestAccessToken({ prompt: '' });
   });
 }
 
@@ -6244,6 +6327,25 @@ function googleAlertaJaRodouHoje() {
 
 function googleMarcarAlertaHoje() {
   localStorage.setItem(CHAVE_ULTIMO_ALERTA, hojeLocal());
+}
+
+// ── Registro de eventos já criados: usuarios/{uid}/config/alertasGoogle = { eventos: { chave: idEvento } }
+function googleChaveEvento(item) {
+  var ref = item.licencaId || item.numero || item.empresa;
+  return [item.tipo, ref, item.tipo === 'condicionante' ? item.descricao : '', item.prazo]
+    .join('|').replace(/[.\/\[\]*~`]/g, '_');
+}
+
+async function googleCarregarEventosCriados() {
+  const { db, doc, getDoc } = window._fb;
+  var snap = await getDoc(doc(db, 'usuarios', _fbUid(), 'config', 'alertasGoogle'));
+  return (snap.exists() && snap.data().eventos) || {};
+}
+
+async function googleRegistrarEvento(chave, idEvento) {
+  const { db, doc, setDoc } = window._fb;
+  var eventos = {}; eventos[chave] = idEvento;
+  await setDoc(doc(db, 'usuarios', _fbUid(), 'config', 'alertasGoogle'), { eventos: eventos }, { merge: true });
 }
 
 // Coleta itens que precisam de alerta
@@ -6262,14 +6364,15 @@ function googleColetarItensParaAlertar() {
         descricao: 'Licenca ' + (l.tipo || '') + ' / ' + (l.orgao || ''),
         prazo:     l.validade,
         dias:      dias,
-        numero:    l.numero || ''
+        numero:    l.numero || '',
+        licencaId: l.id
       });
     }
   });
 
   licencas.forEach(function(l) {
     (l.condicionantes || []).forEach(function(c) {
-      if (!c.prazo) return;
+      if (!c.prazo || c.cumprida) return;
       var p    = new Date(c.prazo + 'T00:00:00');
       var dias = Math.ceil((p - hoje) / 86400000);
       if (dias >= 0 && dias <= DIAS_ALERTA_COND) {
@@ -6279,7 +6382,8 @@ function googleColetarItensParaAlertar() {
           descricao: c.descricao || 'Condicionante sem descricao',
           prazo:     c.prazo,
           dias:      dias,
-          numero:    l.numero || ''
+          numero:    l.numero || '',
+          licencaId: l.id
         });
       }
     });
@@ -6291,8 +6395,13 @@ function googleColetarItensParaAlertar() {
 // Cria evento no Google Calendar
 async function googleCriarEvento(token, item) {
   var titulo = item.tipo === 'licenca'
-    ? '[LICENCA] Vence em ' + item.dias + 'd - ' + item.empresa
-    : '[CONDICIONANTE] Vence em ' + item.dias + 'd - ' + item.empresa;
+    ? '[LICENCA] Vence em ' + fmtDate(item.prazo) + ' - ' + item.empresa
+    : '[CONDICIONANTE] Vence em ' + fmtDate(item.prazo) + ' - ' + item.empresa;
+
+  // Evento de dia inteiro: end.date é exclusivo na API → dia seguinte ao prazo
+  var fim = new Date(item.prazo + 'T00:00:00Z');
+  fim.setUTCDate(fim.getUTCDate() + 1);
+  var fimStr = fim.toISOString().slice(0, 10);
 
   var descricao = [
     'Empresa: ' + item.empresa,
@@ -6308,7 +6417,7 @@ async function googleCriarEvento(token, item) {
     summary:     titulo,
     description: descricao,
     start: { date: item.prazo },
-    end:   { date: item.prazo },
+    end:   { date: fimStr },
     colorId: item.tipo === 'licenca' ? '11' : '6',
     reminders: {
       useDefault: false,
@@ -6422,22 +6531,43 @@ async function googleDispararAlertas(forcar) {
     return;
   }
 
+  // Disparo automático: pergunta antes de abrir o pop-up do Google; cancelar também conta como "rodou hoje"
+  if (!forcar && !confirm('Há ' + itens.length + ' alerta(s) de licenças/condicionantes. Enviar para o Google Agenda e e-mail agora?')) {
+    googleMarcarAlertaHoje();
+    return;
+  }
+
   toast(itens.length + ' alerta(s) - autorizando Google...');
 
   try {
     var token = await googleObterToken();
-    var errosCalendar = 0;
+    var errosCalendar = 0, criados = 0, existentes = 0;
+    var registro = null;
+    try { registro = await googleCarregarEventosCriados(); }
+    catch(e) { console.warn('Registro de eventos indisponível — eventos não serão criados para evitar duplicidade:', e.message); }
     for (var i = 0; i < itens.length; i++) {
-      try { await googleCriarEvento(token, itens[i]); }
+      if (!registro) { errosCalendar++; continue; }
+      var chave = googleChaveEvento(itens[i]);
+      if (registro[chave]) { existentes++; continue; }
+      try {
+        var ev = await googleCriarEvento(token, itens[i]);
+        criados++;
+        registro[chave] = ev.id;
+        try { await googleRegistrarEvento(chave, ev.id); }
+        catch(e) { console.warn('Evento criado mas não registrado:', e.message); }
+      }
       catch(e) { errosCalendar++; console.warn('Evento nao criado:', e.message); }
     }
     await googleEnviarEmail(token, itens);
     googleMarcarAlertaHoje();
-    var msg = 'Alertas enviados: ' + (itens.length - errosCalendar) + ' evento(s) no Calendar + e-mail para ' + ALERTA_EMAIL_DEST;
+    var msg = 'Alertas enviados: ' + criados + ' evento(s) novo(s) no Calendar'
+      + (existentes ? ' (' + existentes + ' já existiam)' : '')
+      + ' + e-mail para ' + ALERTA_EMAIL_DEST;
     if (errosCalendar) msg += ' (' + errosCalendar + ' evento(s) com erro)';
     toast(msg);
   } catch(e) {
     console.error('Erro Google Alertas:', e);
+    if (!forcar) googleMarcarAlertaHoje();   // erro de autorização/pop-up fechado: não insistir de novo hoje
     toast('Erro ao enviar alertas Google: ' + e.message);
   }
 }
@@ -7113,13 +7243,46 @@ function gerarPdfPropostaId(id) {
 }
 
 async function excluirProposta(id) {
-  if (!confirm('Remover esta proposta?')) return;
+  var p = propostas.find(function(x){ return x.id===id; });
+  if (!p) return;
+  var _sVinc = _propServicoVinculado(p);
+  if (!confirm(_sVinc
+    ? 'Esta proposta tem um serviço vinculado. O serviço NÃO será excluído, apenas deixará de estar ligado a esta proposta.\n\nRemover esta proposta?'
+    : 'Remover esta proposta?')) return;
+
+  // Libera o número se esta for a última proposta do ano (maior nº gravado e igual ao contador)
+  var _liberarAno = null, _novoContador = 0;
+  var _m = _propParseNumero(p.numero);
+  if (_m) {
+    await _propCarregarContador();
+    var _maiorRestante = 0;
+    propostas.forEach(function(x) {
+      if (x.id === id) return;
+      var mx = _propParseNumero(x.numero);
+      if (mx && mx.ano === _m.ano && mx.n > _maiorRestante) _maiorRestante = mx.n;
+    });
+    if (_m.n > _maiorRestante && _m.n === (parseInt(_propContador[_m.ano], 10) || 0)) {
+      var _numFmt = String(_m.n).padStart(3, '0') + '/' + _m.ano;
+      if (confirm('Esta é a última proposta de ' + _m.ano + ' (Nº ' + _numFmt + '). Liberar este número para a próxima proposta? Clique em Cancelar se ela já foi enviada ao cliente.')) {
+        _liberarAno = _m.ano; _novoContador = _maiorRestante;
+      }
+    }
+  }
+
   propostas = propostas.filter(function(x){ return x.id!==id; });
   try {
     await _fbDeleteDoc('propostas', id);
     toast('Proposta removida');
   } catch(e) {
     toast('⚠ Erro ao excluir: ' + e.message, 'error');
+    renderPropostas();
+    return;
+  }
+  if (_liberarAno) {
+    try {
+      await _propSalvarContador(_liberarAno, _novoContador);
+      toast('✓ Número liberado — próxima proposta: ' + _propProximoNumero());
+    } catch(e) { toast('⚠ Erro ao atualizar numeração: ' + e.message, 'error'); }
   }
   renderPropostas();
 }
