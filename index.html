@@ -436,7 +436,10 @@ function fazerLogout() {
     <button class="nav-item" onclick="navigate('dashfinanceiro')"><span class="nav-icon">💰</span> Dashboard Financeiro</button>
     <button class="nav-item" onclick="navigate('servicos')"><span class="nav-icon">📁</span> Serviços</button>
     <button class="nav-item" onclick="navigate('pagamentos')"><span class="nav-icon">💳</span> Pagamentos</button>
+    <button class="nav-item" onclick="navigate('contasbancarias')"><span class="nav-icon">🏦</span> Contas Bancárias</button>
     <button class="nav-item" onclick="navigate('balanco')"><span class="nav-icon">📊</span> Balanço</button>
+    <button class="nav-item" onclick="navigate('limitemei')"><span class="nav-icon">📈</span> Limite de Faturamento<span class="nav-badge oculto" id="nav-badge-limitemei"></span></button>
+    <button class="nav-item" onclick="navigate('distlucro')"><span class="nav-icon">🧮</span> Distribuição de Lucro</button>
     </div>
 
     <div class="nav-label nav-group-label" onclick="toggleNavGroup('seguranca')"><span>Segurança do Trabalho</span><span class="nav-group-arrow" id="navgrp-arrow-seguranca">▼</span></div>
@@ -474,6 +477,16 @@ function fazerLogout() {
       <div class="cfg-secao">
         <h4>📝 Numeração de propostas</h4>
         <button class="btn btn-secondary btn-sm" onclick="propConfigurarNumeracao()" title="Definir o último número usado no ano">⚙ Numeração</button>
+      </div>
+      <div class="cfg-secao">
+        <h4>🏢 Empresas</h4>
+        <button class="btn btn-secondary btn-sm" onclick="abrirModalMeis()">Editar empresas</button>
+        <div class="cfg-info" id="cfg-meis-resumo">—</div>
+      </div>
+      <div class="cfg-secao">
+        <h4>🧮 Distribuição de lucro</h4>
+        <button class="btn btn-secondary btn-sm" onclick="abrirModalDistribuicao()">Editar percentuais</button>
+        <div class="cfg-info" id="cfg-dist-resumo">—</div>
       </div>
       <div class="cfg-secao">
         <h4>🎨 Aparência</h4>
@@ -900,15 +913,29 @@ function fazerLogout() {
   <!-- DASHBOARD FINANCEIRO -->
   <div class="page" id="page-dashfinanceiro">
     <div class="topbar">
-      <div><h2>Dashboard Financeiro</h2><div class="topbar-sub" id="dashfin-periodo">Todos os lançamentos</div></div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="month" id="dashfin-mes" onchange="renderDashFinanceiro()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;outline:none;background:var(--surface2)">
-        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('dashfin-mes').value='';renderDashFinanceiro()">Todos</button>
+      <div><h2>Dashboard Financeiro</h2><div class="topbar-sub" id="dashfin-periodo">—</div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label for="dashfin-periodo-tipo" style="font-size:14px;font-weight:500;color:var(--text-muted)">Período:</label>
+        <select id="dashfin-periodo-tipo" onchange="dashfinMudarPeriodo()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;outline:none;background:var(--surface2)">
+          <option value="ano" selected>Este ano</option>
+          <option value="mes">Este mês</option>
+          <option value="mesEsp">Mês específico</option>
+          <option value="anoEsp">Ano específico</option>
+          <option value="custom">Personalizado</option>
+          <option value="todos">Todo o período</option>
+        </select>
+        <input type="month" id="dashfin-mes" onchange="renderDashFinanceiro()" style="display:none;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;outline:none;background:var(--surface2)">
+        <select id="dashfin-ano" onchange="renderDashFinanceiro()" style="display:none;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;outline:none;background:var(--surface2)"></select>
+        <span id="dashfin-custom" style="display:none;align-items:center;gap:6px;font-size:14px;color:var(--text-muted)">
+          De <input type="date" id="dashfin-de" onchange="renderDashFinanceiro()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;outline:none;background:var(--surface2)">
+          Até <input type="date" id="dashfin-ate" onchange="renderDashFinanceiro()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;outline:none;background:var(--surface2)">
+        </span>
       </div>
     </div>
 
     <!-- Cards de totais -->
     <div class="stats-grid" id="dashfin-cards" style="grid-template-columns:repeat(5,1fr)"></div>
+    <div id="dashfin-limitemei" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin:-16px 0 24px"></div>
 
     <div class="two-col" style="margin-top:0">
       <!-- Por conta -->
@@ -928,7 +955,7 @@ function fazerLogout() {
     <div class="two-col" style="margin-top:24px">
       <!-- Serviços em aberto -->
       <div class="card">
-        <div class="card-header"><div class="card-title">📁 Serviços em aberto</div></div>
+        <div class="card-header"><div class="card-title">📁 Serviços em aberto (todos os períodos)</div></div>
         <table><thead><tr><th>Cliente</th><th>Serviço</th><th>Valor Total</th><th>Resta</th></tr></thead>
         <tbody id="dashfin-servicos"></tbody></table>
       </div>
@@ -1005,6 +1032,77 @@ function fazerLogout() {
       </div>
     </div>
 
+  </div>
+
+  <!-- LIMITE MEI -->
+  <div class="page" id="page-limitemei">
+    <div class="topbar" style="flex-wrap:wrap;gap:10px">
+      <div><h2>Limite de Faturamento</h2><div class="topbar-sub">Faturamento de cada empresa em relação ao limite anual do enquadramento</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="font-size:14px;font-weight:500;color:var(--text-muted)">Ano:</label>
+        <select id="lm-ano" onchange="renderLimiteMei()" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;outline:none;background:var(--surface2)"></select>
+      </div>
+    </div>
+    <div id="lm-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:20px;margin-bottom:28px"></div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">⚠ Pendências de classificação</div><span class="badge badge-amber" id="lm-pend-count">0</span></div>
+      <div style="padding:12px 24px;background:var(--amber-pale);color:#8a6200;font-size:13px">Estas receitas não entraram no cálculo de nenhum MEI</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Data</th><th>Cliente</th><th>Descrição</th><th>Conta</th><th>Valor</th><th></th></tr></thead>
+          <tbody id="lm-pendencias"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- DISTRIBUIÇÃO DE LUCRO -->
+  <div class="page" id="page-distlucro">
+    <div class="topbar" style="flex-wrap:wrap;gap:10px">
+      <div><h2>Distribuição de Lucro</h2><div class="topbar-sub">Lucro consolidado dos MEIs, fundo de caixa e pró-labore dos sócios</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="font-size:14px;font-weight:500;color:var(--text-muted)">Ano:</label>
+        <select id="dl-ano" onchange="renderDistribuicaoLucro()" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;outline:none;background:var(--surface2)"></select>
+      </div>
+    </div>
+    <div id="dl-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px"></div>
+    <div class="card">
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Mês</th><th>Lucro</th><th>Permitido Jefferson</th><th>Retirado Jefferson</th><th>Permitido Julianna</th><th>Retirado Julianna</th></tr></thead>
+          <tbody id="dl-tbody"></tbody>
+          <tfoot id="dl-tfoot" style="font-weight:700;background:var(--surface2)"></tfoot>
+        </table>
+      </div>
+    </div>
+    <div id="dl-nota" style="margin-top:14px;padding:14px 18px;border:1px solid var(--border);border-radius:10px;font-size:13px;line-height:1.7;color:var(--text-muted)"></div>
+  </div>
+
+  <!-- CONTAS BANCÁRIAS -->
+  <div class="page" id="page-contasbancarias">
+    <div class="topbar" style="flex-wrap:wrap;gap:10px">
+      <div><h2>Contas Bancárias</h2><div class="topbar-sub" id="contas-count">—</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary" onclick="migrarContasBancarias()" title="Cria as contas a partir do campo Conta dos pagamentos já lançados">🔄 Migrar contas dos pagamentos</button>
+        <button class="btn btn-secondary" onclick="abrirModalTransferencia()">⇄ Transferir</button>
+        <button class="btn btn-primary" onclick="abrirModalConta()">＋ Nova conta</button>
+      </div>
+    </div>
+    <div id="contas-topo" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:8px"></div>
+    <div id="contas-topo-aviso" style="display:none;font-size:12px;color:var(--text-muted);margin-bottom:8px"></div>
+    <div style="margin-bottom:20px"></div>
+    <div id="contas-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:28px"></div>
+    <div class="card-title" style="margin-bottom:12px">Saldo por vínculo</div>
+    <div id="contas-resumo" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:28px"></div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">⇄ Transferências entre contas</div></div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Data</th><th>Origem</th><th>Destino</th><th>Valor</th><th>Obs.</th><th>Ações</th></tr></thead>
+          <tbody id="tbody-transferencias"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <!-- CONDICIONANTES -->
@@ -1441,7 +1539,7 @@ function fazerLogout() {
           </div>
           <div class="field form-full">
             <label>Descrição *</label>
-            <input type="text" id="p-descricao" placeholder="Ex: DAS, e-Social, ART PAE..." oninput="fmtUpper(this)">
+            <input type="text" id="p-descricao" placeholder="Ex: DAS, e-Social, ART PAE..." oninput="fmtUpper(this);atualizarCampoForaFat()">
           </div>
           <div class="field">
             <label>Setor</label>
@@ -1456,11 +1554,13 @@ function fazerLogout() {
             <label>Conta</label>
             <select id="p-conta">
               <option value="">— Selecione —</option>
-              <option value="CORA JULIANNA">CORA JULIANNA</option>
-              <option value="CORA JEFFERSON">CORA JEFFERSON</option>
-              <option value="CONTA PESSOAL JULIANNA">CONTA PESSOAL JULIANNA</option>
-              <option value="CONTA PESSOAL JEFFERSON">CONTA PESSOAL JEFFERSON</option>
             </select>
+          </div>
+          <div class="field form-full" id="campo-fora-fat" style="display:none">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;color:var(--text)">
+              <input type="checkbox" id="p-fora-fat" onchange="_pForaFatManual=true" style="width:auto">
+              Não conta no faturamento do MEI (rendimentos, reembolsos)
+            </label>
           </div>
         </div>
       </div>
@@ -1516,6 +1616,151 @@ function fazerLogout() {
   </div>
 </div>
 
+<!-- MODAL EMPRESAS (MEI) -->
+<div class="modal-overlay" id="modal-meis">
+  <div class="modal" style="width:660px">
+    <div class="modal-header">
+      <h3>🏢 Empresas</h3>
+      <button class="modal-close" onclick="fecharModalDeConfig('modal-meis')">✕</button>
+    </div>
+    <div class="modal-body" id="meis-form"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModalDeConfig('modal-meis')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarMeis()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DISTRIBUIÇÃO DE LUCRO -->
+<div class="modal-overlay" id="modal-distribuicao">
+  <div class="modal" style="width:480px">
+    <div class="modal-header">
+      <h3>🧮 Distribuição de lucro</h3>
+      <button class="modal-close" onclick="fecharModalDeConfig('modal-distribuicao')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid-3">
+        <div class="field">
+          <label>Fundo de caixa (%)</label>
+          <input type="number" step="0.01" min="0" max="100" id="dist-fundo" oninput="atualizarTotalDistribuicao()">
+        </div>
+        <div class="field">
+          <label>Jefferson (%)</label>
+          <input type="number" step="0.01" min="0" max="100" id="dist-jefferson" oninput="atualizarTotalDistribuicao()">
+        </div>
+        <div class="field">
+          <label>Julianna (%)</label>
+          <input type="number" step="0.01" min="0" max="100" id="dist-julianna" oninput="atualizarTotalDistribuicao()">
+        </div>
+      </div>
+      <div id="dist-total" style="margin-top:14px;font-size:13px;font-weight:600"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModalDeConfig('modal-distribuicao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarDistribuicao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONTA BANCÁRIA -->
+<div class="modal-overlay" id="modal-conta">
+  <div class="modal" style="width:620px">
+    <div class="modal-header">
+      <h3 id="modal-conta-title">Nova conta bancária</h3>
+      <button class="modal-close" onclick="closeModal('modal-conta')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field form-full">
+          <label>Nome (exibido) *</label>
+          <input type="text" id="cb-nome" placeholder="Ex: CORA JULIANNA" oninput="fmtUpper(this)">
+        </div>
+        <div class="field">
+          <label>Banco</label>
+          <input type="text" id="cb-banco" placeholder="Ex: Cora">
+        </div>
+        <div class="field">
+          <label>Vínculo *</label>
+          <select id="cb-vinculo"></select>
+        </div>
+        <div class="field">
+          <label>Agência</label>
+          <input type="text" id="cb-agencia">
+        </div>
+        <div class="field">
+          <label>Número da conta</label>
+          <input type="text" id="cb-numero">
+        </div>
+        <div class="field">
+          <label>Titular</label>
+          <input type="text" id="cb-titular">
+        </div>
+        <div class="field">
+          <label>Chave PIX</label>
+          <input type="text" id="cb-pix">
+        </div>
+        <div class="field">
+          <label>Saldo inicial (R$)</label>
+          <input type="number" step="0.01" id="cb-saldo-inicial" placeholder="0,00">
+        </div>
+        <div class="field">
+          <label>Data do saldo inicial</label>
+          <input type="date" id="cb-data-saldo">
+        </div>
+        <div class="field form-full">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;color:var(--text)">
+            <input type="checkbox" id="cb-ativa" style="width:auto">
+            Conta ativa (aparece no lançamento de pagamentos)
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-conta')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarConta()">Salvar conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TRANSFERÊNCIA -->
+<div class="modal-overlay" id="modal-transferencia">
+  <div class="modal" style="width:560px">
+    <div class="modal-header">
+      <h3 id="modal-transf-title">Nova transferência</h3>
+      <button class="modal-close" onclick="closeModal('modal-transferencia')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field">
+          <label>Data *</label>
+          <input type="date" id="tf-data">
+        </div>
+        <div class="field">
+          <label>Valor (R$) *</label>
+          <input type="text" id="tf-valor" placeholder="R$ 0,00" oninput="fmtMoedaInput(this);atualizarAvisoTransferencia()">
+        </div>
+        <div class="field">
+          <label>Conta de origem *</label>
+          <select id="tf-origem" onchange="atualizarAvisoTransferencia()"></select>
+        </div>
+        <div class="field">
+          <label>Conta de destino *</label>
+          <select id="tf-destino"></select>
+        </div>
+        <div class="field form-full">
+          <label>Observação</label>
+          <input type="text" id="tf-obs" placeholder="Opcional">
+        </div>
+      </div>
+      <div id="tf-aviso" style="display:none;margin-top:14px;padding:10px 14px;border-radius:8px;background:var(--amber-pale);color:#8a6200;font-size:13px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-transferencia')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarTransferencia()">Salvar transferência</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div class="alert-modal" id="alerta-abertura"></div>
 
@@ -1543,6 +1788,38 @@ let _propVincularId = null;
 let _propVincularIdPendente = null;
 let _servicoPropostaId = null;   // proposta de origem do serviço novo aberto no modal
 let _editIdFunc = null;
+
+// Financeiro (contas bancárias, MEIs, limite e distribuição de lucro) — declarados aqui, antes de
+// qualquer render de topo, porque atualizarBadgesNav() já usa esses valores no carregamento
+let contasBancarias = [];
+let transferencias  = [];
+let cfgFinanceiro   = {};          // usuarios/{uid}/config/financeiro
+let _editIdConta    = null;
+let _editIdTransf   = null;
+let _pForaFatManual = false;       // usuário mexeu na caixa "fora do faturamento"
+let _cfgReabrir     = false;       // reabrir Configurações ao fechar Empresas / Distribuição
+let _dragContaId    = null;        // conta sendo arrastada na página Contas Bancárias
+const MEIS_PADRAO = [
+  { id: 'jefferson', nome: 'Jefferson', enquadramento: 'MEI' },
+  { id: 'julianna',  nome: 'Julianna',  enquadramento: 'ME'  }
+];
+const LIMITE_MEI_PADRAO = 81000;
+// Limite anual padrão por enquadramento (null = sem limite)
+const ENQUADRAMENTOS = {
+  MEI:   { label: 'MEI',                    limite: LIMITE_MEI_PADRAO },
+  ME:    { label: 'ME (Simples Nacional)',  limite: 360000 },
+  EPP:   { label: 'EPP (Simples Nacional)', limite: 4800000 },
+  OUTRO: { label: 'Outro',                  limite: null }
+};
+const CORES_BANCO = ['#2d6a4f','#e9a23b','#4a7fb5','#c1666b','#52b788','#8a6fb5','#7a8a99'];
+const LIMITE_FAT_ALERTAS = [80, 100, 120];
+const LIMITE_MEI_MENSAL_ABERTURA = 6750;
+const MESES_MEI = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DISTRIBUICAO_PADRAO = { fundo: 30, jefferson: 35, julianna: 35 };
+const SOCIOS_DIST = [
+  { id: 'jefferson', nome: 'Jefferson' },   // nome = valor de retiradaPessoa nos pagamentos
+  { id: 'julianna',  nome: 'Julianna'  }
+];
 
 const PROSP_STATUS = {
   novo:       { label: '🆕 Novo',         cls: 'badge-green' },
@@ -1603,7 +1880,7 @@ window._fbInitData = function() {
   var uid = window._fbUserId;
   var base = function(nome) { return collection(db, 'usuarios', uid, nome); };
   var prontos = 0;
-  var totalCols = 13;
+  var totalCols = 16;
   var iniciado = false;
 
   function onPrimeiraLeitura() {
@@ -1643,7 +1920,7 @@ window._fbInitData = function() {
 
   onSnapshot(base('pagamentos'), function(snap) {
     pagamentos = snap.docs.map(function(d) { return d.data(); });
-    if (!iniciado) { onPrimeiraLeitura(); } else { renderPagamentos(); renderDashboard(); }
+    if (!iniciado) { onPrimeiraLeitura(); } else { renderPagamentos(); renderDashboard(); renderLimiteMei(); renderDistribuicaoLucro(); renderContasBancarias(); }
   });
 
   onSnapshot(base('licencas'), function(snap) {
@@ -1699,6 +1976,23 @@ window._fbInitData = function() {
   onSnapshot(base('sesmt'), function(snap) {
     sesmt = snap.docs.map(function(d) { return d.data(); });
     if (!iniciado) { onPrimeiraLeitura(); } else { renderSesmtSelect(); if (_sesmtEmpresaId) renderFuncionarios(); }
+  });
+
+  onSnapshot(base('contasBancarias'), function(snap) {
+    contasBancarias = snap.docs.map(function(d) { return d.data(); });
+    if (!iniciado) { onPrimeiraLeitura(); } else { renderContasBancarias(); renderLimiteMei(); renderDistribuicaoLucro(); atualizarBadgesNav(); }
+  });
+
+  onSnapshot(base('transferencias'), function(snap) {
+    transferencias = snap.docs.map(function(d) { return d.data(); });
+    if (!iniciado) { onPrimeiraLeitura(); } else { renderContasBancarias(); renderLimiteMei(); renderDistribuicaoLucro(); atualizarBadgesNav(); }
+  });
+
+  onSnapshot(window._fb.doc(db, 'usuarios', uid, 'config', 'financeiro'), function(snap) {
+    cfgFinanceiro = snap.exists() ? (snap.data() || {}) : {};
+    renderResumoMeisCfg();
+    renderResumoDistribuicaoCfg();
+    if (!iniciado) { onPrimeiraLeitura(); } else { renderContasBancarias(); renderLimiteMei(); renderDistribuicaoLucro(); atualizarBadgesNav(); }
   });
 };
 
@@ -1925,6 +2219,7 @@ function atualizarBadgesNav() {
   _setNavBadge('licencas', licencas.filter(licencaEmAlertaVencimento).length);
   _setNavBadge('condicionantes', condicionantesEmAlerta().length);
   _setNavBadge('propostas', propostas.filter(function(p) { return p.status === 'enviada'; }).length);
+  _setNavBadge('limitemei', meisEmAlerta().length);
 }
 
 // ── Configurações ──
@@ -1974,8 +2269,11 @@ function navigate(page) {
   if (page === 'clientes') renderClientes();
   if (page === 'pagamentos') renderPagamentos();
   if (page === 'servicos') renderServicos();
-  if (page === 'dashfinanceiro') renderDashFinanceiro();
+  if (page === 'dashfinanceiro') { dashfinResetPeriodo(); renderDashFinanceiro(); }
   if (page === 'balanco') renderBalanco();
+  if (page === 'contasbancarias') renderContasBancarias();
+  if (page === 'limitemei') renderLimiteMei();
+  if (page === 'distlucro') renderDistribuicaoLucro();
   if (page === 'sudema') renderSudema();
   if (page === 'cte') renderCte();
   if (page === 'ibama') renderIbama();
@@ -2430,7 +2728,7 @@ function openModalPagamento(id) {
   document.getElementById('p-data').value  = p ? (p.data||'') : hojeLocal();
   document.getElementById('p-tipo').value  = p ? (p.tipo||'Receita') : 'Receita';
   document.getElementById('p-setor').value = p ? (p.setor||'') : '';
-  document.getElementById('p-conta').value = p ? (p.conta||'') : '';
+  popularSelectContaPag(p);
   document.getElementById('p-forma').value = p ? (p.forma||'') : '';
   document.getElementById('p-nfe').value   = p ? (p.nfe||'Não') : 'Não';
 
@@ -2448,6 +2746,9 @@ function openModalPagamento(id) {
   popularServicosSelectFiltrado();
   document.getElementById('p-servico-id').value = p ? (p.servicoId||'') : '';
   document.getElementById('p-descricao').value  = p ? (p.descricao||'') : '';
+  document.getElementById('p-fora-fat').checked = !!(p && p.foraFaturamento);
+  _pForaFatManual = !!(p && p.foraFaturamento !== undefined);
+  atualizarCampoForaFat();
 
   setMoedaInput('p-valor-pago',    p ? p.valorPago    : null);
   setMoedaInput('p-valor-servico', p ? p.valorServico : null);
@@ -2486,6 +2787,10 @@ async function salvarPagamento() {
   const resta   = servico > 0 ? Math.max(0, servico - pago) : 0;
 
   const existing = editingPagamentoId ? pagamentos.find(p=>p.id===editingPagamentoId) : null;
+  // Conta: grava contaId + nome; lançamento antigo com conta ainda não cadastrada mantém o nome original
+  var _contaSel  = document.getElementById('p-conta').value;
+  var _contaObj  = getContaBancaria(_contaSel);
+  var _contaNome = _contaObj ? _contaObj.nome : (_contaSel === '__nome__' && existing ? (existing.conta||'') : '');
   const obj = {
     id:              editingPagamentoId || genId(),
     data,
@@ -2496,7 +2801,9 @@ async function salvarPagamento() {
     despOutro,
     retiradaPessoa,
     setor:           document.getElementById('p-setor').value,
-    conta:           document.getElementById('p-conta').value,
+    conta:           _contaNome,
+    contaId:         _contaObj ? _contaObj.id : '',
+    foraFaturamento: tipo === 'Receita' && document.getElementById('p-fora-fat').checked,
     servicoId:       document.getElementById('p-servico-id').value,
     valorPago:       pago,
     valorServico:    servico,
@@ -4879,25 +5186,97 @@ function renderServicos() {
 }
 
 // ── DASHBOARD FINANCEIRO ──────────────────────────────
-function renderDashFinanceiro() {
-  var mes = document.getElementById('dashfin-mes').value; // "YYYY-MM" ou vazio
+// Período do dashboard: {inicio, fim} em AAAA-MM-DD, ou null para "Todo o período"
+function dashfinIntervalo() {
+  var tipo = document.getElementById('dashfin-periodo-tipo').value;
+  var hoje = hojeLocal();
+  if (tipo === 'mes' || tipo === 'mesEsp') {
+    // "Este mês" = mês corrente inteiro; "Mês específico" = mês escolhido inteiro
+    var m = (tipo === 'mesEsp' && document.getElementById('dashfin-mes').value) || hoje.slice(0, 7);
+    var ult = new Date(parseInt(m.slice(0, 4), 10), parseInt(m.slice(5, 7), 10), 0).getDate();
+    return { inicio: m + '-01', fim: m + '-' + String(ult).padStart(2, '0') };
+  }
+  if (tipo === 'anoEsp') {
+    var a = document.getElementById('dashfin-ano').value || hoje.slice(0, 4);
+    return { inicio: a + '-01-01', fim: a + '-12-31' };
+  }
+  if (tipo === 'custom') {
+    return { inicio: document.getElementById('dashfin-de').value || '0000-01-01',
+             fim:    document.getElementById('dashfin-ate').value || '9999-12-31' };
+  }
+  if (tipo === 'todos') return null;
+  return { inicio: hoje.slice(0, 4) + '-01-01', fim: hoje.slice(0, 4) + '-12-31' };   // "Este ano" (padrão): ano corrente inteiro
+}
 
-  function filtrarPorMes(lista) {
-    if (!mes) return lista;
-    return lista.filter(function(p){ return (p.data||'').slice(0,7) === mes; });
+function _dashfinTextoPeriodo(iv) {
+  if (!iv) return 'Todo o período';
+  var tipo = document.getElementById('dashfin-periodo-tipo').value;
+  var mesNome = function(d) { return MESES_MEI[parseInt(d.slice(5, 7), 10) - 1] + ' de ' + d.slice(0, 4); };
+  var intervalo = fmtDate(iv.inicio) + ' a ' + fmtDate(iv.fim);
+  if (tipo === 'ano')    return 'Ano de ' + iv.inicio.slice(0, 4) + ' — ' + intervalo;
+  if (tipo === 'mes')    return mesNome(iv.inicio) + ' — ' + intervalo;
+  if (tipo === 'mesEsp') return mesNome(iv.inicio);
+  if (tipo === 'anoEsp') return 'Ano de ' + iv.inicio.slice(0, 4);
+  var temIni = iv.inicio !== '0000-01-01', temFim = iv.fim !== '9999-12-31';
+  if (temIni && temFim) return intervalo;
+  if (temIni) return 'A partir de ' + fmtDate(iv.inicio);
+  if (temFim) return 'Até ' + fmtDate(iv.fim);
+  return 'Todo o período';
+}
+
+// Anos com lançamentos, do mais recente ao mais antigo (mantém a seleção atual)
+function _dashfinPopularAnos() {
+  var sel = document.getElementById('dashfin-ano');
+  if (!sel) return;
+  var anos = {};
+  pagamentos.forEach(function(p) { if (p.data) anos[p.data.slice(0, 4)] = true; });
+  var lista = Object.keys(anos).sort().reverse();
+  if (!lista.length) lista = [hojeLocal().slice(0, 4)];
+  var atual = sel.value;
+  sel.innerHTML = lista.map(function(a) { return '<option value="' + a + '">' + a + '</option>'; }).join('');
+  sel.value = lista.indexOf(atual) !== -1 ? atual : (lista.indexOf(hojeLocal().slice(0, 4)) !== -1 ? hojeLocal().slice(0, 4) : lista[0]);
+}
+
+function dashfinMudarPeriodo() {
+  var tipo = document.getElementById('dashfin-periodo-tipo').value;
+  var hoje = hojeLocal();
+  var mesEl = document.getElementById('dashfin-mes');
+  mesEl.style.display = tipo === 'mesEsp' ? '' : 'none';
+  document.getElementById('dashfin-ano').style.display    = tipo === 'anoEsp' ? '' : 'none';
+  document.getElementById('dashfin-custom').style.display = tipo === 'custom' ? 'inline-flex' : 'none';
+  if (tipo === 'mesEsp' && !mesEl.value) mesEl.value = hoje.slice(0, 7);
+  if (tipo === 'custom') {
+    var de = document.getElementById('dashfin-de'), ate = document.getElementById('dashfin-ate');
+    if (!de.value)  de.value  = hoje.slice(0, 4) + '-01-01';
+    if (!ate.value) ate.value = hoje;
+  }
+  renderDashFinanceiro();
+}
+
+// Ao entrar na página: sempre "Este ano", sem guardar a escolha anterior
+function dashfinResetPeriodo() {
+  document.getElementById('dashfin-periodo-tipo').value = 'ano';
+  ['dashfin-mes', 'dashfin-de', 'dashfin-ate'].forEach(function(id) { document.getElementById(id).value = ''; });
+  document.getElementById('dashfin-mes').style.display    = 'none';
+  document.getElementById('dashfin-ano').style.display    = 'none';
+  document.getElementById('dashfin-custom').style.display = 'none';
+}
+
+function renderDashFinanceiro() {
+  _dashfinPopularAnos();
+  // Personalizado com data inicial maior que a final: avisa e mantém o que está na tela
+  if (document.getElementById('dashfin-periodo-tipo').value === 'custom') {
+    var _de = document.getElementById('dashfin-de').value, _ate = document.getElementById('dashfin-ate').value;
+    if (_de && _ate && _de > _ate) { toast('⚠ A data inicial deve ser anterior ou igual à final'); return; }
   }
 
-  var pags = filtrarPorMes(pagamentos);
+  var iv = dashfinIntervalo();
+  var pags = iv
+    ? pagamentos.filter(function(p) { return p.data && p.data >= iv.inicio && p.data <= iv.fim; })
+    : pagamentos;
 
   var periodoEl = document.getElementById('dashfin-periodo');
-  if (periodoEl) {
-    if (mes) {
-      var d = new Date(mes + '-01T12:00');
-      periodoEl.textContent = d.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
-    } else {
-      periodoEl.textContent = 'Todos os lançamentos';
-    }
-  }
+  if (periodoEl) periodoEl.textContent = _dashfinTextoPeriodo(iv);
 
   var totalReceita  = pags.filter(function(p){ return p.tipo==='Receita';  }).reduce(function(a,p){ return a+(p.valorPago||0); },0);
   var totalDespesa  = pags.filter(function(p){ return p.tipo==='Despesa';  }).reduce(function(a,p){ return a+(p.valorPago||0); },0);
@@ -4918,7 +5297,10 @@ function renderDashFinanceiro() {
     '<div class="stat-card"><div class="stat-label">Total de Despesas</div><div class="stat-value" style="color:var(--red)">' + fmtVal(totalDespesa) + '</div><div class="stat-hint">Saídas no período</div></div>' +
     '<div class="stat-card"><div class="stat-label">Retiradas</div><div class="stat-value" style="color:#8a6200">' + fmtVal(totalRetirada) + '</div><div class="stat-hint">Pró-labore / retiradas</div></div>' +
     '<div class="stat-card"><div class="stat-label">Saldo do Período</div><div class="stat-value" style="color:' + (saldo>=0?'var(--green-deep)':'var(--red)') + '">' + fmtVal(saldo) + '</div><div class="stat-hint">' + (saldo>=0?'Resultado positivo':'Resultado negativo') + '</div></div>' +
-    '<div class="stat-card" style="border-left:3px solid var(--amber)"><div class="stat-label">A Receber (serviços)</div><div class="stat-value" style="color:#8a6200">' + fmtVal(totalAReceber) + '</div><div class="stat-hint">Saldo pendente de clientes</div></div>';
+    '<div class="stat-card" style="border-left:3px solid var(--amber)"><div class="stat-label">A Receber (serviços)</div><div class="stat-value" style="color:#8a6200">' + fmtVal(totalAReceber) + '</div><div class="stat-hint">Saldo pendente de clientes (todos os períodos)</div></div>';
+
+  // Limite de faturamento: lógica própria, sempre no ano corrente (não usa o filtro de período)
+  renderDashLimiteMei(new Date().getFullYear());
 
   // Por conta — últimas 3 movimentações globais (todas as contas)
   var tbContas = document.getElementById('dashfin-contas');
@@ -5197,6 +5579,7 @@ function onChangeTipoPag() {
   if (tipo === 'Despesa') {
     document.getElementById('p-descricao').value = '';
   }
+  atualizarCampoForaFat();
 }
 
 function onChangeDespCat() {
@@ -5450,7 +5833,10 @@ function exportarBackup() {
     prospeccao:   prospeccao,
     contatos:     contatos,
     propostas:    propostas,
-    sesmt:        sesmt
+    sesmt:        sesmt,
+    contasBancarias: contasBancarias,
+    transferencias:  transferencias,
+    configFinanceiro: cfgFinanceiro
   };
   var json = JSON.stringify(dados, null, 2);
   var blob = new Blob([json], {type:'application/json'});
@@ -5492,6 +5878,9 @@ async function importarBackup() {
           if (dados.contatos)      { contatos       = dados.contatos;      await saveContatos(); }
           if (dados.propostas)     { propostas      = dados.propostas;     await savePropostas(); }
           if (dados.sesmt)         { sesmt          = dados.sesmt;         await saveSesmt(); }
+          if (dados.contasBancarias)  { contasBancarias = dados.contasBancarias; for (const c of contasBancarias) await _fbSaveDoc('contasBancarias', c.id, c); }
+          if (dados.transferencias)   { transferencias  = dados.transferencias;  for (const t of transferencias)  await _fbSaveDoc('transferencias', t.id, t); }
+          if (dados.configFinanceiro) { cfgFinanceiro   = dados.configFinanceiro; await _fbSaveDoc('config', 'financeiro', cfgFinanceiro); }
           renderDashboard();
           renderExtrasNav();
           toast('✓ Backup importado com sucesso!');
@@ -6335,6 +6724,14 @@ function verificarAlertasAbertura() {
     });
   });
 
+  // Limite de faturamento das empresas (ano corrente) — no topo da lista; OUTRO não entra
+  meisEmAlerta().reverse().forEach(function(r) {
+    alertas.unshift({
+      tipo: r.pct > LIMITE_FAT_ALERTAS[2] ? '🔴' : (r.pct >= LIMITE_FAT_ALERTAS[1] ? '🟠' : '🟡'),
+      msg: r.mei.nome + ' — ' + r.mei.enquadramento + ': ' + fmtPctMei(r.pct) + ' do limite de ' + r.ano + ' (' + fmtVal(r.faturamento) + ' de ' + fmtVal(r.limite) + ')'
+    });
+  });
+
   if (!alertas.length) return;
 
   var el = document.getElementById('alerta-abertura');
@@ -6509,6 +6906,1087 @@ document.addEventListener('keydown', function(e) {
 });
 
 
+
+// ══ FINANCEIRO: MEIs, CONTAS BANCÁRIAS E TRANSFERÊNCIAS ══════════
+// (estado e constantes declarados em "Dados em memória", no topo do script)
+
+function _escFin(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+  });
+}
+
+// Empresas sempre com os dois ids fixos; dados salvos sobrepõem o padrão
+function getMeis() {
+  var salvos = (cfgFinanceiro && cfgFinanceiro.meis) || [];
+  return MEIS_PADRAO.map(function(m) {
+    var s = salvos.find(function(x) { return x.id === m.id; }) || {};
+    return { id: m.id, nome: s.nome || m.nome, cnpj: s.cnpj || '', abertura: s.abertura || '',
+             enquadramento: ENQUADRAMENTOS[s.enquadramento] ? s.enquadramento : m.enquadramento, limites: s.limites || {} };
+  });
+}
+function getMei(id) { return getMeis().find(function(m) { return m.id === id; }) || null; }
+function vinculoLabel(v) {
+  if (v === 'pessoal') return 'Pessoal';
+  var m = getMei(v);
+  return m ? m.nome + ' — ' + m.enquadramento : '—';
+}
+function getContaBancaria(id) {
+  return id ? (contasBancarias.find(function(c) { return c.id === id; }) || null) : null;
+}
+function contaAtiva(c) { return c.ativa !== false; }
+// Ordem das contas: ativas antes das desativadas; depois pelo campo ordem; sem ordem ficam no final, por nome
+function _ordemContas(a, b) {
+  if (contaAtiva(a) !== contaAtiva(b)) return contaAtiva(a) ? -1 : 1;
+  var oa = typeof a.ordem === 'number', ob = typeof b.ordem === 'number';
+  if (oa && ob && a.ordem !== b.ordem) return a.ordem - b.ordem;
+  if (oa !== ob) return oa ? -1 : 1;
+  return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+}
+function _contaPorNome(nome) {
+  var k = (nome || '').trim().toUpperCase();
+  return k ? (contasBancarias.find(function(c) { return (c.nome || '').trim().toUpperCase() === k; }) || null) : null;
+}
+
+// Modais abertos a partir de Configurações: fecha Configurações antes e a reabre (com resumos atualizados) ao sair
+function _abrirModalDeConfig(id) {
+  var cfg = document.getElementById('modal-config');
+  _cfgReabrir = !!(cfg && cfg.classList.contains('open'));
+  if (_cfgReabrir) closeModal('modal-config');
+  document.getElementById(id).classList.add('open');
+}
+function fecharModalDeConfig(id) {
+  closeModal(id);
+  if (!_cfgReabrir) return;
+  _cfgReabrir = false;
+  renderResumoMeisCfg();
+  renderResumoDistribuicaoCfg();
+  abrirConfiguracoes();
+}
+
+// ── Configurações → Empresas ──
+function renderResumoMeisCfg() {
+  var el = document.getElementById('cfg-meis-resumo');
+  if (!el) return;
+  el.innerHTML = getMeis().map(function(m) {
+    return _escFin(m.nome) + ' (' + m.enquadramento + ')' + (m.cnpj ? ' — ' + _escFin(m.cnpj) : ' — CNPJ não informado')
+      + (m.abertura ? ' · aberto em ' + fmtDate(m.abertura) : '');
+  }).join('<br>');
+}
+
+function _meisAnos(m) {
+  var anoAtual = new Date().getFullYear();
+  var ini = m.abertura ? parseInt(m.abertura.slice(0, 4), 10) : anoAtual;
+  var anos = {};
+  for (var a = Math.min(ini, anoAtual); a <= anoAtual + 1; a++) anos[a] = true;
+  Object.keys(m.limites || {}).forEach(function(a) { anos[a] = true; });
+  return Object.keys(anos).map(Number).sort();
+}
+
+function _meisLimitesHtml(m) {
+  return _meisAnos(m).map(function(a) {
+    var v = m.limites && m.limites[a] != null ? m.limites[a] : '';
+    var pad = limitePadraoEmpresa(m.enquadramento, m.abertura, a);
+    return '<div class="field"><label>Limite ' + a + ' (R$)</label>'
+      + '<input type="number" step="0.01" min="0" data-ano="' + a + '" value="' + v + '" placeholder="' + (pad === null ? 'sem limite' : pad.toLocaleString('pt-BR') + ' (padrão)') + '"></div>';
+  }).join('');
+}
+
+function abrirModalMeis() {
+  var html = getMeis().map(function(m) {
+    return '<div class="form-section">'
+      + '<div class="form-section-title">Empresa — ' + _escFin(m.nome) + '</div>'
+      + '<div class="form-grid">'
+      +   '<div class="field"><label>Nome</label><input type="text" id="mei-' + m.id + '-nome" value="' + _escFin(m.nome) + '"></div>'
+      +   '<div class="field"><label>CNPJ</label><input type="text" id="mei-' + m.id + '-cnpj" value="' + _escFin(m.cnpj) + '" oninput="fmtCpfCnpj(this)" placeholder="00.000.000/0000-00"></div>'
+      +   '<div class="field"><label>Data de abertura</label><input type="date" id="mei-' + m.id + '-abertura" value="' + _escFin(m.abertura) + '" onchange="_meisAtualizarAnos(\'' + m.id + '\')"></div>'
+      +   '<div class="field"><label>Enquadramento</label><select id="mei-' + m.id + '-enquadramento" onchange="_meisAtualizarAnos(\'' + m.id + '\')">'
+      +     Object.keys(ENQUADRAMENTOS).map(function(k) {
+              return '<option value="' + k + '"' + (k === m.enquadramento ? ' selected' : '') + '>' + ENQUADRAMENTOS[k].label + '</option>';
+            }).join('')
+      +   '</select></div>'
+      + '</div>'
+      + '<div id="mei-' + m.id + '-limites-box"' + (m.enquadramento === 'OUTRO' ? ' style="display:none"' : '') + '>'
+      +   '<div class="form-section-title" style="margin-top:14px">Limite anual de faturamento</div>'
+      +   '<div class="form-grid-3" id="mei-' + m.id + '-limites">' + _meisLimitesHtml(m) + '</div>'
+      +   '<div class="cfg-info" style="font-size:12px;color:var(--text-muted);margin-top:6px">Deixe em branco para usar o padrão do enquadramento.</div>'
+      + '</div>'
+      + '<div id="mei-' + m.id + '-sem-limite" style="margin-top:14px;font-size:12px;color:var(--text-muted)' + (m.enquadramento === 'OUTRO' ? '' : ';display:none') + '">Enquadramento sem limite de faturamento.</div>'
+      + '</div>';
+  }).join('');
+  document.getElementById('meis-form').innerHTML = html;
+  _abrirModalDeConfig('modal-meis');
+}
+
+function _meisLerLimites(id) {
+  var lim = {};
+  document.querySelectorAll('#mei-' + id + '-limites input[data-ano]').forEach(function(inp) {
+    if (inp.value !== '' && !isNaN(parseFloat(inp.value))) lim[inp.getAttribute('data-ano')] = parseFloat(inp.value);
+  });
+  return lim;
+}
+
+// Ao mudar a abertura ou o enquadramento, refaz a lista de anos preservando o que já foi digitado
+function _meisAtualizarAnos(id) {
+  var m = {
+    abertura:      document.getElementById('mei-' + id + '-abertura').value,
+    enquadramento: document.getElementById('mei-' + id + '-enquadramento').value,
+    limites:       _meisLerLimites(id)
+  };
+  document.getElementById('mei-' + id + '-limites').innerHTML = _meisLimitesHtml(m);
+  var outro = m.enquadramento === 'OUTRO';
+  document.getElementById('mei-' + id + '-limites-box').style.display = outro ? 'none' : '';
+  document.getElementById('mei-' + id + '-sem-limite').style.display  = outro ? '' : 'none';
+}
+
+async function salvarMeis() {
+  var meis = MEIS_PADRAO.map(function(p) {
+    return {
+      id:       p.id,
+      nome:     document.getElementById('mei-' + p.id + '-nome').value.trim() || p.nome,
+      cnpj:     document.getElementById('mei-' + p.id + '-cnpj').value.trim(),
+      abertura: document.getElementById('mei-' + p.id + '-abertura').value,
+      enquadramento: document.getElementById('mei-' + p.id + '-enquadramento').value,
+      limites:  _meisLerLimites(p.id)
+    };
+  });
+  cfgFinanceiro = Object.assign({}, cfgFinanceiro, { meis: meis });
+  try {
+    await _fbSaveDoc('config', 'financeiro', cfgFinanceiro);
+    toast('✓ Empresas salvas');
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
+  renderResumoMeisCfg();
+  renderContasBancarias();
+  fecharModalDeConfig('modal-meis');
+}
+
+// ── Saldo da conta: saldoInicial + receitas − despesas − retiradas ± transferências (a partir de dataSaldoInicial) ──
+function saldoContaBancaria(conta, ignorarTransfId) {
+  var ini = conta.dataSaldoInicial || '';
+  var saldo = Number(conta.saldoInicial) || 0;
+  pagamentos.forEach(function(p) {
+    if (p.contaId !== conta.id || (ini && (p.data || '') < ini)) return;
+    var v = p.valorPago || 0;
+    if (p.tipo === 'Receita') saldo += v;
+    else if (p.tipo === 'Despesa' || p.tipo === 'Retirada') saldo -= v;
+  });
+  transferencias.forEach(function(t) {
+    if (t.id === ignorarTransfId || (ini && (t.data || '') < ini)) return;
+    if (t.contaDestinoId === conta.id) saldo += t.valor || 0;
+    if (t.contaOrigemId  === conta.id) saldo -= t.valor || 0;
+  });
+  return saldo;
+}
+
+function contaTemVinculos(id) {
+  return pagamentos.some(function(p) { return p.contaId === id; })
+      || transferencias.some(function(t) { return t.contaOrigemId === id || t.contaDestinoId === id; });
+}
+
+// ── Página Contas Bancárias ──
+function renderContasBancarias() {
+  var grid = document.getElementById('contas-grid');
+  if (!grid) return;
+  var lista = contasBancarias.slice().sort(_ordemContas);
+  var nAtivas = lista.filter(contaAtiva).length;
+  var cnt = document.getElementById('contas-count');
+  if (cnt) cnt.textContent = nAtivas + ' conta(s) ativa(s)' + (lista.length > nAtivas ? ' · ' + (lista.length - nAtivas) + ' inativa(s)' : '');
+
+  // Faixa de resumo (contas ativas), com o mesmo saldo atual dos cards
+  var topo = document.getElementById('contas-topo');
+  if (topo) {
+    var corSaldo = function(v) { return v >= 0 ? 'var(--green-deep)' : 'var(--red)'; };
+    var somaAtivas = function(filtro) {
+      return lista.filter(function(c) { return contaAtiva(c) && filtro(c); })
+                  .reduce(function(a, c) { return a + saldoContaBancaria(c); }, 0);
+    };
+    var porEmpresa = getMeis().map(function(m) { return { m: m, v: somaAtivas(function(c) { return c.vinculo === m.id; }) }; });
+    var totalEmp = porEmpresa.reduce(function(a, e) { return a + e.v; }, 0);
+    var pessoal  = somaAtivas(function(c) { return c.vinculo === 'pessoal'; });
+    var total    = somaAtivas(function() { return true; });
+    var cardTopo = function(rotulo, valor, extra) {
+      return '<div class="stat-card">'
+        + '<div class="stat-label">' + rotulo + '</div>'
+        + '<div class="stat-value" style="font-size:24px;color:' + corSaldo(valor) + '">' + fmtVal(valor) + '</div>'
+        + (extra || '') + '</div>';
+    };
+    topo.innerHTML =
+        cardTopo('Saldo total', total, '<div class="stat-hint">Contas ativas</div>')
+      + cardTopo('Empresas', totalEmp, '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.6">'
+          + porEmpresa.map(function(e) {
+              return _escFin(e.m.nome) + ' — ' + e.m.enquadramento + ': <span style="font-weight:600;color:' + corSaldo(e.v) + '">' + fmtVal(e.v) + '</span>';
+            }).join('<br>') + '</div>')
+      + cardTopo('Pessoal', pessoal, '<div class="stat-hint">Contas ativas com vínculo pessoal</div>');
+
+    var aviso = document.getElementById('contas-topo-aviso');
+    var inativas = lista.filter(function(c) { return !contaAtiva(c) && Math.abs(saldoContaBancaria(c)) >= 0.005; });
+    if (aviso) {
+      var somaInat = inativas.reduce(function(a, c) { return a + saldoContaBancaria(c); }, 0);
+      aviso.innerHTML = inativas.length
+        ? inativas.length + ' conta(s) desativada(s) com saldo de <span style="font-weight:600;color:' + corSaldo(somaInat) + '">' + fmtVal(somaInat) + '</span> não incluída(s) no total'
+        : '';
+      aviso.style.display = inativas.length ? 'block' : 'none';
+    }
+  }
+
+  if (!lista.length) {
+    grid.innerHTML = '<div class="card empty-state" style="grid-column:1/-1"><div class="empty-icon">🏦</div>'
+      + 'Nenhuma conta cadastrada.<br>Use <strong>＋ Nova conta</strong> ou <strong>🔄 Migrar contas dos pagamentos</strong>.</div>';
+  } else {
+    var ativasIds = lista.filter(contaAtiva).map(function(c) { return c.id; });
+    grid.innerHTML = lista.map(function(c) {
+      var saldo = saldoContaBancaria(c);
+      var ativa = contaAtiva(c);
+      var pos = ativasIds.indexOf(c.id);
+      var dados = [];
+      if (c.agencia || c.numero) dados.push('Ag. ' + _escFin(c.agencia || '—') + ' · Conta ' + _escFin(c.numero || '—'));
+      if (c.titular)  dados.push('Titular: ' + _escFin(c.titular));
+      if (c.chavePix) dados.push('PIX: ' + _escFin(c.chavePix));
+      return '<div class="card" data-conta-id="' + c.id + '" style="padding:18px 20px;transition:box-shadow .1s;' + (ativa ? '' : 'opacity:0.55') + '"'
+        + (ativa ? ' ondragover="_contaDragOver(event,this)" ondragleave="_contaDragLeave(event,this)" ondrop="_contaDrop(event,this)"' : '') + '>'
+        + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+        +   '<div style="display:flex;gap:6px;align-items:flex-start">'
+        +     (ativa ? '<span draggable="true" ondragstart="_contaDragStart(event,\'' + c.id + '\')" ondragend="_contaDragEnd()" title="Arrastar para reordenar" style="cursor:grab;color:var(--text-muted);font-size:18px;line-height:1;user-select:none;padding:1px 2px">⠿</span>' : '')
+        +     '<div><div style="font-weight:600;font-size:15px">' + _escFin(c.nome) + '</div>'
+        +     '<div style="font-size:12px;color:var(--text-muted)">' + _escFin(c.banco || 'Banco não informado') + (ativa ? '' : ' · inativa') + '</div></div>'
+        +   '</div>'
+        +   '<span class="badge ' + (c.vinculo === 'pessoal' ? 'badge-amber' : 'badge-green') + '">' + _escFin(vinculoLabel(c.vinculo)) + '</span>'
+        + '</div>'
+        + '<div style="font-size:12px;color:var(--text-muted);margin-top:10px;line-height:1.7;min-height:20px">' + (dados.join('<br>') || '—') + '</div>'
+        + '<div style="margin-top:12px"><div class="stat-label" style="margin-bottom:4px">Saldo atual</div>'
+        +   '<div style="font-size:22px;font-weight:600;color:' + (saldo >= 0 ? 'var(--green-deep)' : 'var(--red)') + '">' + fmtVal(saldo) + '</div>'
+        +   '<div style="font-size:11px;color:var(--text-muted)">Inicial ' + fmtVal(Number(c.saldoInicial) || 0) + (c.dataSaldoInicial ? ' em ' + fmtDate(c.dataSaldoInicial) : '') + '</div></div>'
+        + '<div style="display:flex;gap:6px;margin-top:14px;flex-wrap:wrap">'
+        +   (ativa && pos > 0 ? '<button class="btn btn-xs btn-secondary" onclick="moverConta(\'' + c.id + '\',-1)" title="Mover uma posição para trás">◀</button>' : '')
+        +   (ativa && pos < ativasIds.length - 1 ? '<button class="btn btn-xs btn-secondary" onclick="moverConta(\'' + c.id + '\',1)" title="Mover uma posição para frente">▶</button>' : '')
+        +   '<button class="btn btn-xs btn-secondary" onclick="abrirModalConta(\'' + c.id + '\')">✏ Editar</button>'
+        +   (ativa ? '<button class="btn btn-xs btn-secondary" onclick="abrirModalTransferencia(null,\'' + c.id + '\')">⇄ Transferir</button>' : '')
+        +   '<button class="btn btn-xs btn-secondary" onclick="alternarAtivaConta(\'' + c.id + '\')">' + (ativa ? 'Desativar' : 'Reativar') + '</button>'
+        +   '<button class="btn btn-xs btn-danger" onclick="excluirConta(\'' + c.id + '\')">✕ Excluir</button>'
+        + '</div></div>';
+    }).join('');
+  }
+
+  // Saldo total por vínculo, com barra de distribuição por banco
+  var resumo = document.getElementById('contas-resumo');
+  if (resumo) {
+    var coresBanco = {};
+    lista.forEach(function(c) {
+      var b = c.banco || 'Sem banco';
+      if (!(b in coresBanco)) coresBanco[b] = CORES_BANCO[Object.keys(coresBanco).length % CORES_BANCO.length];
+    });
+    resumo.innerHTML = MEIS_PADRAO.map(function(m) { return m.id; }).concat(['pessoal']).map(function(v) {
+      var contas = lista.filter(function(c) { return c.vinculo === v; });
+      var total = 0, porBanco = {}, totalPos = 0;
+      contas.forEach(function(c) {
+        var s = saldoContaBancaria(c);
+        total += s;
+        if (s > 0) { var b = c.banco || 'Sem banco'; porBanco[b] = (porBanco[b] || 0) + s; totalPos += s; }
+      });
+      var bancos = Object.keys(porBanco).sort(function(a, b) { return porBanco[b] - porBanco[a]; });
+      var barra = totalPos > 0
+        ? bancos.map(function(b) {
+            return '<div title="' + _escFin(b) + ': ' + fmtVal(porBanco[b]) + '" style="width:' + (porBanco[b] / totalPos * 100) + '%;background:' + coresBanco[b] + '"></div>';
+          }).join('')
+        : '';
+      var legenda = bancos.map(function(b) {
+        return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px"><span style="width:9px;height:9px;border-radius:2px;background:' + coresBanco[b] + '"></span>'
+          + _escFin(b) + ' ' + Math.round(porBanco[b] / totalPos * 100) + '%</span>';
+      }).join('');
+      return '<div class="stat-card">'
+        + '<div class="stat-label">' + _escFin(vinculoLabel(v)) + '</div>'
+        + '<div class="stat-value" style="font-size:24px;color:' + (total >= 0 ? 'var(--green-deep)' : 'var(--red)') + '">' + fmtVal(total) + '</div>'
+        + '<div class="stat-hint">' + contas.length + ' conta(s)</div>'
+        + '<div style="display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--surface2);margin-top:12px">' + barra + '</div>'
+        + '<div style="font-size:11px;color:var(--text-muted);margin-top:8px">' + (legenda || 'Sem saldo positivo') + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  // Lista de transferências
+  var tb = document.getElementById('tbody-transferencias');
+  if (tb) {
+    var tl = transferencias.slice().sort(function(a, b) { return (b.data || '').localeCompare(a.data || ''); });
+    tb.innerHTML = tl.length ? tl.map(function(t) {
+      var o = getContaBancaria(t.contaOrigemId), d = getContaBancaria(t.contaDestinoId);
+      return '<tr>'
+        + '<td style="font-size:13px">' + fmtDate(t.data) + '</td>'
+        + '<td style="font-size:13px">' + _escFin(o ? o.nome : '—') + '</td>'
+        + '<td style="font-size:13px">' + _escFin(d ? d.nome : '—') + '</td>'
+        + '<td style="font-weight:600">' + fmtVal(t.valor) + '</td>'
+        + '<td style="font-size:13px;color:var(--text-muted)">' + _escFin(t.obs || '—') + '</td>'
+        + '<td><div style="display:flex;gap:4px">'
+        +   '<button class="btn btn-xs btn-secondary" onclick="abrirModalTransferencia(\'' + t.id + '\')">✏</button>'
+        +   '<button class="btn btn-xs btn-danger" onclick="excluirTransferencia(\'' + t.id + '\')">✕</button>'
+        + '</div></td></tr>';
+    }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">Nenhuma transferência registrada</td></tr>';
+  }
+}
+
+// ── Modal Conta ──
+function abrirModalConta(id) {
+  _editIdConta = id || null;
+  var c = id ? getContaBancaria(id) : null;
+  document.getElementById('modal-conta-title').textContent = c ? 'Editar conta bancária' : 'Nova conta bancária';
+  document.getElementById('cb-vinculo').innerHTML = '<option value="">— Selecione —</option>'
+    + getMeis().map(function(m) { return '<option value="' + m.id + '">' + _escFin(vinculoLabel(m.id)) + '</option>'; }).join('')
+    + '<option value="pessoal">Pessoal</option>';
+  document.getElementById('cb-nome').value          = c ? (c.nome || '') : '';
+  document.getElementById('cb-banco').value         = c ? (c.banco || '') : '';
+  document.getElementById('cb-vinculo').value       = c ? (c.vinculo || '') : '';
+  document.getElementById('cb-agencia').value       = c ? (c.agencia || '') : '';
+  document.getElementById('cb-numero').value        = c ? (c.numero || '') : '';
+  document.getElementById('cb-titular').value       = c ? (c.titular || '') : '';
+  document.getElementById('cb-pix').value           = c ? (c.chavePix || '') : '';
+  document.getElementById('cb-saldo-inicial').value = c ? (Number(c.saldoInicial) || 0) : '';
+  document.getElementById('cb-data-saldo').value    = c ? (c.dataSaldoInicial || '') : hojeLocal();
+  document.getElementById('cb-ativa').checked       = c ? contaAtiva(c) : true;
+  document.getElementById('modal-conta').classList.add('open');
+}
+
+async function salvarConta() {
+  var nome = document.getElementById('cb-nome').value.trim();
+  var vinculo = document.getElementById('cb-vinculo').value;
+  if (!nome)    { toast('⚠ Informe o nome da conta'); return; }
+  if (!vinculo) { toast('⚠ Selecione o vínculo da conta'); return; }
+  var dup = _contaPorNome(nome);
+  if (dup && dup.id !== _editIdConta) { toast('⚠ Já existe uma conta com esse nome'); return; }
+
+  var existente = _editIdConta ? getContaBancaria(_editIdConta) : null;
+  var obj = {
+    id:               _editIdConta || genId(),
+    nome:             nome,
+    banco:            document.getElementById('cb-banco').value.trim(),
+    agencia:          document.getElementById('cb-agencia').value.trim(),
+    numero:           document.getElementById('cb-numero').value.trim(),
+    titular:          document.getElementById('cb-titular').value.trim(),
+    chavePix:         document.getElementById('cb-pix').value.trim(),
+    vinculo:          vinculo,
+    saldoInicial:     parseFloat(document.getElementById('cb-saldo-inicial').value) || 0,
+    dataSaldoInicial: document.getElementById('cb-data-saldo').value,
+    ativa:            document.getElementById('cb-ativa').checked,
+    createdAt:        existente ? existente.createdAt : new Date().toISOString()
+  };
+  if (existente && typeof existente.ordem === 'number') obj.ordem = existente.ordem;   // editar não perde a posição
+
+  // Renomeou: atualiza o nome gravado nos pagamentos vinculados (relatórios e PDFs usam o campo conta)
+  var renomeados = [];
+  if (existente && existente.nome !== nome) {
+    pagamentos = pagamentos.map(function(p) {
+      if (p.contaId !== obj.id) return p;
+      var novo = Object.assign({}, p, { conta: nome });
+      renomeados.push(novo);
+      return novo;
+    });
+  }
+  if (existente) contasBancarias = contasBancarias.map(function(c) { return c.id === obj.id ? obj : c; });
+  else contasBancarias.push(obj);
+
+  try {
+    await _fbSaveDoc('contasBancarias', obj.id, obj);
+    for (const p of renomeados) await _fbSaveDoc('pagamentos', p.id, p);
+    toast(existente ? '✓ Conta atualizada' + (renomeados.length ? ' (' + renomeados.length + ' lançamento(s) renomeados)' : '') : '✓ Conta cadastrada');
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
+  closeModal('modal-conta');
+  renderContasBancarias();
+}
+
+async function alternarAtivaConta(id) {
+  var c = getContaBancaria(id);
+  if (!c) return;
+  var ativa = contaAtiva(c);
+  if (ativa && !confirm('Desativar a conta "' + c.nome + '"?\n\nEla deixa de aparecer no lançamento de pagamentos, mas o histórico é mantido.')) return;
+  var obj = Object.assign({}, c, { ativa: !ativa });
+  contasBancarias = contasBancarias.map(function(x) { return x.id === id ? obj : x; });
+  try {
+    await _fbSaveDoc('contasBancarias', id, obj);
+    toast(ativa ? 'Conta desativada' : '✓ Conta reativada');
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
+  renderContasBancarias();
+}
+
+async function excluirConta(id) {
+  var c = getContaBancaria(id);
+  if (!c) return;
+  if (contaTemVinculos(id)) { toast('⚠ Conta com pagamentos ou transferências vinculados não pode ser excluída — use Desativar', 'error'); return; }
+  if (!confirm('Excluir a conta "' + c.nome + '"?')) return;
+  contasBancarias = contasBancarias.filter(function(x) { return x.id !== id; });
+  try {
+    await _fbDeleteDoc('contasBancarias', id);
+    toast('Conta excluída');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderContasBancarias();
+}
+
+// ── Reordenação dos cards (só contas ativas; desativadas ficam sempre depois) ──
+// Recalcula ordem 0, 1, 2… das ativas, atualiza a tela na hora e grava só as que mudaram
+async function _aplicarOrdemContas(idsAtivos) {
+  var mudaram = [];
+  contasBancarias = contasBancarias.map(function(c) {
+    var i = idsAtivos.indexOf(c.id);
+    if (i === -1 || c.ordem === i) return c;
+    var novo = Object.assign({}, c, { ordem: i });
+    mudaram.push(novo);
+    return novo;
+  });
+  if (!mudaram.length) return;
+  renderContasBancarias();
+  try {
+    for (const c of mudaram) await _fbSaveDoc('contasBancarias', c.id, c);
+  } catch(e) {
+    toast('⚠ Erro ao salvar a ordem das contas: ' + e.message, 'error');
+  }
+}
+
+function _idsContasAtivasOrdenadas() {
+  return contasBancarias.filter(contaAtiva).sort(_ordemContas).map(function(c) { return c.id; });
+}
+
+function moverConta(id, delta) {
+  var ids = _idsContasAtivasOrdenadas();
+  var i = ids.indexOf(id), j = i + delta;
+  if (i === -1 || j < 0 || j >= ids.length) return;
+  ids[i] = ids[j];
+  ids[j] = id;
+  _aplicarOrdemContas(ids);
+}
+
+function _contaLimparIndicadores() {
+  document.querySelectorAll('#contas-grid [data-conta-id]').forEach(function(el) {
+    el.style.boxShadow = '';
+    delete el.dataset.depois;
+  });
+}
+
+function _contaDragStart(ev, id) {
+  _dragContaId = id;
+  var card = ev.target.closest('[data-conta-id]');
+  ev.dataTransfer.effectAllowed = 'move';
+  ev.dataTransfer.setData('text/plain', id);
+  if (card) {
+    if (ev.dataTransfer.setDragImage) ev.dataTransfer.setDragImage(card, 20, 20);
+    setTimeout(function() { card.style.opacity = '0.4'; }, 0);
+  }
+}
+
+function _contaDragEnd() {
+  var card = _dragContaId ? document.querySelector('#contas-grid [data-conta-id="' + _dragContaId + '"]') : null;
+  if (card) card.style.opacity = '';
+  _dragContaId = null;
+  _contaLimparIndicadores();
+}
+
+// Indicador: barra verde no lado (esquerdo/direito) em que o card será solto
+function _contaDragOver(ev, el) {
+  if (!_dragContaId || el.dataset.contaId === _dragContaId) return;
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = 'move';
+  var r = el.getBoundingClientRect();
+  var depois = ev.clientX > r.left + r.width / 2;
+  if (el.dataset.depois !== String(depois)) {
+    _contaLimparIndicadores();
+    el.dataset.depois = String(depois);
+    el.style.boxShadow = (depois ? '4px' : '-4px') + ' 0 0 0 var(--green-mid)';
+  }
+}
+
+function _contaDragLeave(ev, el) {
+  if (ev.relatedTarget && el.contains(ev.relatedTarget)) return;
+  el.style.boxShadow = '';
+  delete el.dataset.depois;
+}
+
+function _contaDrop(ev, el) {
+  ev.preventDefault();
+  var origem = _dragContaId, alvo = el.dataset.contaId, depois = el.dataset.depois === 'true';
+  _contaDragEnd();
+  if (!origem || origem === alvo) return;
+  var ids = _idsContasAtivasOrdenadas().filter(function(id) { return id !== origem; });
+  var i = ids.indexOf(alvo);
+  if (i === -1) return;
+  ids.splice(depois ? i + 1 : i, 0, origem);
+  _aplicarOrdemContas(ids);
+}
+
+// ── Transferências ──
+function _opcoesContasTransf(incluirIds) {
+  return '<option value="">— Selecione —</option>' + contasBancarias
+    .filter(function(c) { return contaAtiva(c) || incluirIds.indexOf(c.id) !== -1; })
+    .sort(_ordemContas)
+    .map(function(c) { return '<option value="' + c.id + '">' + _escFin(c.nome) + ' (' + _escFin(vinculoLabel(c.vinculo)) + ')</option>'; })
+    .join('');
+}
+
+function abrirModalTransferencia(id, origemId) {
+  if (!contasBancarias.filter(contaAtiva).length) { toast('⚠ Cadastre ao menos duas contas antes de transferir'); return; }
+  _editIdTransf = id || null;
+  var t = id ? transferencias.find(function(x) { return x.id === id; }) : null;
+  var incluir = t ? [t.contaOrigemId, t.contaDestinoId] : [];
+  document.getElementById('modal-transf-title').textContent = t ? 'Editar transferência' : 'Nova transferência';
+  document.getElementById('tf-origem').innerHTML  = _opcoesContasTransf(incluir);
+  document.getElementById('tf-destino').innerHTML = _opcoesContasTransf(incluir);
+  document.getElementById('tf-data').value    = t ? (t.data || '') : hojeLocal();
+  document.getElementById('tf-origem').value  = t ? (t.contaOrigemId || '') : (origemId || '');
+  document.getElementById('tf-destino').value = t ? (t.contaDestinoId || '') : '';
+  setMoedaInput('tf-valor', t ? t.valor : null);
+  document.getElementById('tf-obs').value     = t ? (t.obs || '') : '';
+  atualizarAvisoTransferencia();
+  document.getElementById('modal-transferencia').classList.add('open');
+}
+
+// Saldo da origem depois da transferência (desconsiderando a própria, se for edição)
+function _saldoOrigemAposTransf() {
+  var origem = getContaBancaria(document.getElementById('tf-origem').value);
+  var valor = parseMoeda(document.getElementById('tf-valor').value);
+  if (!origem || !(valor > 0)) return null;
+  return { conta: origem, saldo: saldoContaBancaria(origem, _editIdTransf) - valor };
+}
+
+function atualizarAvisoTransferencia() {
+  var el = document.getElementById('tf-aviso');
+  if (!el) return;
+  var r = _saldoOrigemAposTransf();
+  if (r && r.saldo < 0) {
+    el.textContent = '⚠ O saldo de ' + r.conta.nome + ' ficará negativo: ' + fmtVal(r.saldo) + '. A transferência pode ser salva mesmo assim.';
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+async function salvarTransferencia() {
+  var data    = document.getElementById('tf-data').value;
+  var origem  = document.getElementById('tf-origem').value;
+  var destino = document.getElementById('tf-destino').value;
+  var valor   = parseMoeda(document.getElementById('tf-valor').value);
+  if (!data)              { toast('⚠ Informe a data'); return; }
+  if (!origem || !destino) { toast('⚠ Selecione as contas de origem e destino'); return; }
+  if (origem === destino) { toast('⚠ Origem e destino devem ser contas diferentes'); return; }
+  if (!(valor > 0))       { toast('⚠ Informe um valor maior que zero'); return; }
+
+  var r = _saldoOrigemAposTransf();
+  var existente = _editIdTransf ? transferencias.find(function(x) { return x.id === _editIdTransf; }) : null;
+  var obj = {
+    id:             _editIdTransf || genId(),
+    data:           data,
+    contaOrigemId:  origem,
+    contaDestinoId: destino,
+    valor:          valor,
+    obs:            document.getElementById('tf-obs').value.trim(),
+    createdAt:      existente ? existente.createdAt : new Date().toISOString()
+  };
+  if (existente) transferencias = transferencias.map(function(x) { return x.id === obj.id ? obj : x; });
+  else transferencias.push(obj);
+
+  try {
+    await _fbSaveDoc('transferencias', obj.id, obj);
+    var msg = existente ? '✓ Transferência atualizada' : '✓ Transferência registrada';
+    if (r && r.saldo < 0) msg += ' — atenção: saldo de ' + r.conta.nome + ' ficou negativo';
+    toast(msg);
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
+  closeModal('modal-transferencia');
+  renderContasBancarias();
+}
+
+async function excluirTransferencia(id) {
+  if (!confirm('Excluir esta transferência?')) return;
+  transferencias = transferencias.filter(function(x) { return x.id !== id; });
+  try {
+    await _fbDeleteDoc('transferencias', id);
+    toast('Transferência excluída');
+  } catch(e) {
+    toast('⚠ Erro ao excluir: ' + e.message, 'error');
+  }
+  renderContasBancarias();
+}
+
+// ── Migração: cria contas a partir do campo conta dos pagamentos e grava contaId ──
+function _vinculoPorNomeConta(nome) {
+  var n = nome.toUpperCase();
+  if (n.indexOf('PESSOAL') !== -1)   return 'pessoal';
+  if (n.indexOf('JULIANNA') !== -1)  return 'julianna';
+  if (n.indexOf('JEFFERSON') !== -1) return 'jefferson';
+  return 'pessoal';
+}
+
+async function migrarContasBancarias() {
+  var nomes = {};
+  pagamentos.forEach(function(p) {
+    var n = (p.conta || '').trim();
+    if (n && !nomes[n.toUpperCase()]) nomes[n.toUpperCase()] = n;
+  });
+  var chaves = Object.keys(nomes);
+  if (!chaves.length) { toast('Nenhum pagamento com conta preenchida'); return; }
+  if (!confirm('Migrar contas dos pagamentos?\n\nContas encontradas:\n• ' + chaves.map(function(k) { return nomes[k]; }).join('\n• ')
+    + '\n\nSerão criadas as contas que ainda não existem (saldo inicial 0) e o contaId será gravado nos lançamentos. O campo Conta dos lançamentos não muda.')) return;
+
+  var criadas = [], reaproveitadas = 0, mapa = {};
+  chaves.forEach(function(k) {
+    var existente = _contaPorNome(k);
+    if (existente) { mapa[k] = existente; reaproveitadas++; return; }
+    var nome = nomes[k].toUpperCase();
+    var nova = {
+      id:               genId(),
+      nome:             nome,
+      banco:            nome.indexOf('CORA') === 0 ? 'Cora' : '',
+      agencia:          '',
+      numero:           '',
+      titular:          nome.indexOf('JULIANNA') !== -1 ? 'Julianna' : (nome.indexOf('JEFFERSON') !== -1 ? 'Jefferson' : ''),
+      chavePix:         '',
+      vinculo:          _vinculoPorNomeConta(nome),
+      saldoInicial:     0,
+      dataSaldoInicial: '',
+      ativa:            true,
+      createdAt:        new Date().toISOString()
+    };
+    criadas.push(nova);
+    contasBancarias.push(nova);
+    mapa[k] = nova;
+  });
+
+  var atualizados = [];
+  pagamentos = pagamentos.map(function(p) {
+    var k = (p.conta || '').trim().toUpperCase();
+    if (!k || !mapa[k] || (p.contaId && getContaBancaria(p.contaId))) return p;
+    var novo = Object.assign({}, p, { contaId: mapa[k].id });
+    atualizados.push(novo);
+    return novo;
+  });
+
+  try {
+    for (const c of criadas)     await _fbSaveDoc('contasBancarias', c.id, c);
+    for (const p of atualizados) await _fbSaveDoc('pagamentos', p.id, p);
+    toast('✓ Migração concluída');
+    alert('Migração concluída\n\n'
+      + '• Contas criadas: ' + criadas.length + (criadas.length ? ' (' + criadas.map(function(c) { return c.nome + ' → ' + vinculoLabel(c.vinculo); }).join('; ') + ')' : '') + '\n'
+      + '• Contas já existentes reaproveitadas: ' + reaproveitadas + '\n'
+      + '• Lançamentos atualizados com contaId: ' + atualizados.length
+      + (criadas.length ? '\n\nRevise banco, dados e saldo inicial de cada conta em Editar.' : ''));
+  } catch(e) {
+    toast('⚠ Erro na migração: ' + e.message, 'error');
+  }
+  renderContasBancarias();
+  renderPagamentos();
+}
+
+// ── Formulário de pagamento: select de contas e caixa "fora do faturamento" ──
+function popularSelectContaPag(p) {
+  var sel = document.getElementById('p-conta');
+  if (!sel) return;
+  var atual = p ? (getContaBancaria(p.contaId) || _contaPorNome(p.conta)) : null;
+  var lista = contasBancarias
+    .filter(function(c) { return contaAtiva(c) || (atual && c.id === atual.id); })
+    .sort(_ordemContas);
+  var html = '<option value="">— Selecione —</option>' + lista.map(function(c) {
+    return '<option value="' + c.id + '">' + _escFin(c.nome) + (contaAtiva(c) ? '' : ' (inativa)') + '</option>';
+  }).join('');
+  // Lançamento antigo cuja conta ainda não foi cadastrada: mantém o nome original
+  if (!atual && p && p.conta) html += '<option value="__nome__">' + _escFin(p.conta) + ' (não cadastrada)</option>';
+  sel.innerHTML = html;
+  sel.value = atual ? atual.id : (p && p.conta ? '__nome__' : '');
+}
+
+function atualizarCampoForaFat() {
+  var campo = document.getElementById('campo-fora-fat');
+  var chk   = document.getElementById('p-fora-fat');
+  if (!campo || !chk) return;
+  var receita = document.getElementById('p-tipo').value === 'Receita';
+  campo.style.display = receita ? 'flex' : 'none';
+  // Marca sozinho quando a descrição contém RENDIMENTO, enquanto o usuário não mexer na caixa
+  if (receita && !_pForaFatManual) chk.checked = /RENDIMENTO/i.test(document.getElementById('p-descricao').value);
+}
+
+// ══ LIMITE DE FATURAMENTO ════════════════════════════════════════
+
+function fmtPctMei(p) { return (p || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%'; }
+
+// Padrão do enquadramento: MEI 81.000 (no ano de abertura, 6.750 × meses do mês de abertura até dezembro),
+// ME 360.000, EPP 4.800.000, OUTRO sem limite (null)
+function limitePadraoEmpresa(enq, abertura, ano) {
+  if (enq === 'MEI' && abertura && parseInt(abertura.slice(0, 4), 10) === Number(ano)) {
+    return LIMITE_MEI_MENSAL_ABERTURA * (12 - parseInt(abertura.slice(5, 7), 10) + 1);
+  }
+  return (ENQUADRAMENTOS[enq] || ENQUADRAMENTOS.MEI).limite;
+}
+function limiteEmpresaAno(emp, ano) {
+  if (emp.enquadramento === 'OUTRO') return null;
+  var v = emp.limites ? emp.limites[ano] : null;
+  return (v != null && v !== '') ? Number(v) : limitePadraoEmpresa(emp.enquadramento, emp.abertura, ano);
+}
+
+// Avisos por enquadramento (textos fixos)
+function avisoLimite(pct, enq) {
+  var A = LIMITE_FAT_ALERTAS;
+  if (enq === 'MEI') {
+    if (pct > A[2])  return 'Limite excedido em mais de 20%: desenquadramento retroativo a janeiro do ano. Procure a contabilidade imediatamente.';
+    if (pct >= A[1]) return 'Limite excedido em até 20%: o excesso é tributado em DAS complementar e o MEI é desenquadrado a partir do ano seguinte. Consulte a contabilidade.';
+    if (pct >= A[0]) return 'Atenção: faturamento acima de 80% do limite.';
+  } else if (enq === 'ME') {
+    if (pct > A[1])  return 'Limite da ME ultrapassado: a empresa passa a ser EPP no ano seguinte, continuando no Simples Nacional. Informe a contabilidade.';
+    if (pct >= A[0]) return 'Atenção: faturamento acima de 80% do limite da ME.';
+  } else if (enq === 'EPP') {
+    if (pct > A[2])  return 'Limite do Simples excedido em mais de 20%: exclusão a partir do mês seguinte ao excesso. Procure a contabilidade imediatamente.';
+    if (pct > A[1])  return 'Limite do Simples excedido em até 20%: exclusão do Simples a partir do ano seguinte. Consulte a contabilidade.';
+    if (pct >= A[0]) return 'Atenção: faturamento acima de 80% do limite do Simples Nacional.';
+  }
+  return '';
+}
+
+// Cores: verde < 80% · amarelo 80–99% · laranja 100–120% · vermelho > 120%; aviso conforme o enquadramento
+function faixaLimite(pct, enq) {
+  var A = LIMITE_FAT_ALERTAS, aviso = avisoLimite(pct, enq);
+  if (pct > A[2])  return { cor: '#c0392b', fundo: 'var(--red-pale)',   texto: 'var(--red)', aviso: aviso };
+  if (pct >= A[1]) return { cor: '#e67e22', fundo: '#fde9d9',           texto: '#a0521a',    aviso: aviso };
+  if (pct >= A[0]) return { cor: '#e9b10b', fundo: 'var(--amber-pale)', texto: '#8a6200',    aviso: aviso };
+  return { cor: 'var(--green-mid)', fundo: '', texto: '', aviso: aviso };
+}
+
+// Função única de cálculo — usada na página, no Dashboard Financeiro, no pop-up e no menu.
+// Faturamento = receitas do ano em contas com vínculo = MEI, exceto foraFaturamento: true
+function calcFaturamentoMei(meiId, ano) {
+  ano = Number(ano);
+  var mei = getMei(meiId);
+  var meses = [0,0,0,0,0,0,0,0,0,0,0,0];
+  pagamentos.forEach(function(p) {
+    if (p.tipo !== 'Receita' || p.foraFaturamento === true) return;
+    if ((p.data || '').slice(0, 4) !== String(ano)) return;
+    var c = getContaBancaria(p.contaId);
+    if (!c || c.vinculo !== meiId) return;
+    var m = parseInt(p.data.slice(5, 7), 10) - 1;
+    if (m >= 0 && m < 12) meses[m] += p.valorPago || 0;
+  });
+  var acumulado = [], soma = 0;
+  meses.forEach(function(v) { soma += v; acumulado.push(soma); });
+  var semLimite = mei.enquadramento === 'OUTRO';
+  var limite = semLimite ? null : limiteEmpresaAno(mei, ano);
+  var pct = semLimite ? null : (limite > 0 ? soma / limite * 100 : 0);
+
+  // Projeção (só no ano corrente): média dos meses decorridos × 12.
+  // No ano de abertura, a média e a projeção começam no mês de abertura.
+  var projecao = null;
+  var hoje = new Date();
+  var mesIni = (mei.abertura && parseInt(mei.abertura.slice(0, 4), 10) === ano) ? parseInt(mei.abertura.slice(5, 7), 10) : 1;
+  if (ano === hoje.getFullYear()) {
+    var decorridos = hoje.getMonth() + 1 - mesIni + 1;
+    if (decorridos > 0) {
+      var somaDec = meses.slice(mesIni - 1, hoje.getMonth() + 1).reduce(function(a, v) { return a + v; }, 0);
+      projecao = somaDec / decorridos * (12 - mesIni + 1);
+    }
+  }
+  return {
+    mei: mei, ano: ano, meses: meses, acumulado: acumulado,
+    faturamento: soma, limite: limite, saldo: semLimite ? null : limite - soma, pct: pct, semLimite: semLimite,
+    faixa: semLimite ? faixaLimite(0, 'OUTRO') : faixaLimite(pct, mei.enquadramento), projecao: projecao, mesIni: mesIni,
+    limitePadrao: !(mei.limites && mei.limites[ano] != null && mei.limites[ano] !== '')
+  };
+}
+function calcLimitesMei(ano) { return MEIS_PADRAO.map(function(m) { return calcFaturamentoMei(m.id, ano); }); }
+function meisEmAlerta(ano) {
+  return calcLimitesMei(ano || new Date().getFullYear()).filter(function(r) { return !r.semLimite && r.pct >= LIMITE_FAT_ALERTAS[0]; });
+}
+
+// Receitas do ano que não entram em nenhum MEI: sem conta (ou conta não cadastrada) ou em conta pessoal
+function pendenciasLimiteMei(ano) {
+  return pagamentos.filter(function(p) {
+    if (p.tipo !== 'Receita' || p.foraFaturamento === true) return false;
+    if ((p.data || '').slice(0, 4) !== String(ano)) return false;
+    var c = getContaBancaria(p.contaId);
+    return !c || c.vinculo === 'pessoal';
+  }).sort(function(a, b) { return (a.data || '').localeCompare(b.data || ''); });
+}
+
+function _barraLimiteMei(r, altura) {
+  return '<div style="position:relative;height:' + altura + 'px;border-radius:' + (altura / 2) + 'px;background:var(--surface2);overflow:hidden">'
+    + '<div style="height:100%;width:' + Math.min(100, r.pct) + '%;background:' + r.faixa.cor + ';transition:width .3s"></div></div>';
+}
+
+// ── Página Limite de Faturamento ──
+function renderLimiteMei() {
+  var sel = document.getElementById('lm-ano');
+  var cards = document.getElementById('lm-cards');
+  if (!sel || !cards) return;
+  var anoAtual = new Date().getFullYear();
+  var anos = {};
+  anos[anoAtual] = true;
+  pagamentos.forEach(function(p) { if (p.tipo === 'Receita' && p.data) anos[p.data.slice(0, 4)] = true; });
+  var lista = Object.keys(anos).map(Number).sort(function(a, b) { return b - a; });
+  var escolhido = parseInt(sel.value, 10) || anoAtual;
+  sel.innerHTML = lista.map(function(a) { return '<option value="' + a + '">' + a + '</option>'; }).join('');
+  sel.value = lista.indexOf(escolhido) !== -1 ? escolhido : anoAtual;
+  var ano = parseInt(sel.value, 10);
+
+  cards.innerHTML = calcLimitesMei(ano).map(function(r) {
+    var f = r.faixa;
+    var linhas = r.meses.map(function(v, i) {
+      var antes = i < r.mesIni - 1;
+      var passou = !r.semLimite && r.acumulado[i] > r.limite;
+      return '<tr' + (antes ? ' style="opacity:0.45"' : '') + '>'
+        + '<td style="font-size:13px">' + MESES_MEI[i] + '</td>'
+        + '<td style="font-size:13px">' + (v ? fmtVal(v) : '—') + '</td>'
+        + '<td style="font-size:13px;font-weight:500' + (passou ? ';color:var(--red)' : '') + '">' + fmtVal(r.acumulado[i]) + '</td>'
+        + '</tr>';
+    }).join('');
+    var hintLimite = r.limitePadrao
+      ? (r.mei.enquadramento === 'MEI' && r.mesIni > 1 ? 'Proporcional: abertura em ' + MESES_MEI[r.mesIni - 1].toLowerCase() : 'Padrão ' + r.mei.enquadramento)
+      : 'Definido em Configurações';
+    if (r.semLimite) {
+      return '<div class="card">'
+        + '<div class="card-header">'
+        +   '<div><div class="card-title">' + _escFin(r.mei.nome) + ' — ' + r.mei.enquadramento + '</div>'
+        +   '<div style="font-size:12px;color:var(--text-muted)">' + (r.mei.cnpj ? 'CNPJ ' + _escFin(r.mei.cnpj) : 'CNPJ não informado') + '</div></div>'
+        +   '<span class="badge badge-green">Sem limite</span>'
+        + '</div>'
+        + '<div style="padding:18px 24px"><div class="stat-label">Faturamento</div><div style="font-size:20px;font-weight:600">' + fmtVal(r.faturamento) + '</div></div>'
+        + '<table><thead><tr><th>Mês</th><th>Faturamento</th><th>Acumulado</th></tr></thead><tbody>' + linhas + '</tbody></table>'
+        + '</div>';
+    }
+    return '<div class="card">'
+      + '<div class="card-header">'
+      +   '<div><div class="card-title">' + _escFin(r.mei.nome) + ' — ' + r.mei.enquadramento + '</div>'
+      +   '<div style="font-size:12px;color:var(--text-muted)">' + (r.mei.cnpj ? 'CNPJ ' + _escFin(r.mei.cnpj) : 'CNPJ não informado') + '</div></div>'
+      +   '<span class="badge" style="background:' + (f.fundo || 'var(--green-pale)') + ';color:' + (f.texto || 'var(--green-mid)') + ';font-size:13px">' + fmtPctMei(r.pct) + '</span>'
+      + '</div>'
+      + '<div style="padding:18px 24px">'
+      +   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;margin-bottom:16px">'
+      +     '<div><div class="stat-label">Faturamento</div><div style="font-size:20px;font-weight:600">' + fmtVal(r.faturamento) + '</div></div>'
+      +     '<div><div class="stat-label">Limite ' + ano + '</div><div style="font-size:20px;font-weight:600">' + fmtVal(r.limite) + '</div><div style="font-size:11px;color:var(--text-muted)">' + hintLimite + '</div></div>'
+      +     '<div><div class="stat-label">' + (r.saldo >= 0 ? 'Saldo até o limite' : 'Excedido em') + '</div><div style="font-size:20px;font-weight:600;color:' + (r.saldo >= 0 ? 'var(--green-deep)' : 'var(--red)') + '">' + fmtVal(Math.abs(r.saldo)) + '</div></div>'
+      +     '<div><div class="stat-label">% utilizado</div><div style="font-size:20px;font-weight:600;color:' + f.cor + '">' + fmtPctMei(r.pct) + '</div></div>'
+      +   '</div>'
+      +   _barraLimiteMei(r, 12)
+      +   (f.aviso ? '<div style="margin-top:14px;padding:10px 14px;border-radius:8px;background:' + f.fundo + ';color:' + f.texto + ';font-size:13px;font-weight:500">⚠ ' + f.aviso + '</div>' : '')
+      +   (r.projecao !== null
+            ? '<div style="margin-top:14px;font-size:13px;color:var(--text-muted)">📈 Projeção de fechamento do ano: <strong style="color:var(--text)">' + fmtVal(r.projecao) + '</strong> ('
+              + fmtPctMei(r.limite > 0 ? r.projecao / r.limite * 100 : 0) + ' do limite)</div>'
+            : '')
+      + '</div>'
+      + '<table><thead><tr><th>Mês</th><th>Faturamento</th><th>Acumulado</th></tr></thead><tbody>' + linhas + '</tbody></table>'
+      + '</div>';
+  }).join('');
+
+  // Pendências de classificação
+  var pend = pendenciasLimiteMei(ano);
+  var cnt = document.getElementById('lm-pend-count');
+  if (cnt) cnt.textContent = pend.length;
+  var tb = document.getElementById('lm-pendencias');
+  if (tb) {
+    tb.innerHTML = pend.length ? pend.map(function(p) {
+      var cli = clientes.find(function(c) { return c.id === p.clienteId; });
+      var c = getContaBancaria(p.contaId);
+      var contaTxt = c ? _escFin(c.nome) + ' <span class="badge badge-amber">Pessoal</span>'
+                       : (p.conta ? _escFin(p.conta) + ' <span class="badge badge-red">não cadastrada</span>' : '<span class="badge badge-red">Sem conta</span>');
+      return '<tr>'
+        + '<td style="font-size:13px">' + fmtDate(p.data) + '</td>'
+        + '<td style="font-size:13px">' + _escFin(cli ? cli.nome_razao_social : '—') + '</td>'
+        + '<td style="font-size:13px">' + _escFin(p.descricao || '—') + '</td>'
+        + '<td style="font-size:13px">' + contaTxt + '</td>'
+        + '<td style="font-weight:600">' + fmtVal(p.valorPago) + '</td>'
+        + '<td><button class="btn btn-xs btn-secondary" onclick="openModalPagamento(\'' + p.id + '\')">✏ Corrigir conta</button></td>'
+        + '</tr>';
+    }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">✓ Nenhuma receita pendente de classificação em ' + ano + '</td></tr>';
+  }
+}
+
+// ── Dashboard Financeiro: % de cada MEI ──
+function renderDashLimiteMei(ano) {
+  var el = document.getElementById('dashfin-limitemei');
+  if (!el) return;
+  el.innerHTML = calcLimitesMei(ano).map(function(r) {
+    var titulo = '<div class="stat-label">' + _escFin(r.mei.nome) + ' — ' + r.mei.enquadramento + ' · ' + ano + '</div>';
+    if (r.semLimite) {
+      return '<div class="stat-card" style="cursor:pointer" onclick="navigate(\'limitemei\')" title="Abrir Limite de Faturamento">'
+        + titulo
+        + '<div class="stat-value" style="font-size:24px">' + fmtVal(r.faturamento) + '</div>'
+        + '<div class="stat-hint">Sem limite de faturamento</div>'
+        + '</div>';
+    }
+    return '<div class="stat-card" style="cursor:pointer" onclick="navigate(\'limitemei\')" title="Abrir Limite de Faturamento">'
+      + titulo
+      + '<div class="stat-value" style="font-size:24px;color:' + r.faixa.cor + '">' + fmtPctMei(r.pct) + '</div>'
+      + '<div class="stat-hint" style="margin-bottom:10px">' + fmtVal(r.faturamento) + ' de ' + fmtVal(r.limite) + '</div>'
+      + _barraLimiteMei(r, 6)
+      + '</div>';
+  }).join('');
+}
+
+// ══ DISTRIBUIÇÃO DE LUCRO E PRÓ-LABORE ═══════════════════════════
+
+function getDistribuicao() {
+  var d = (cfgFinanceiro && cfgFinanceiro.distribuicao) || {};
+  return {
+    fundo:     d.fundo     != null ? Number(d.fundo)     : DISTRIBUICAO_PADRAO.fundo,
+    jefferson: d.jefferson != null ? Number(d.jefferson) : DISTRIBUICAO_PADRAO.jefferson,
+    julianna:  d.julianna  != null ? Number(d.julianna)  : DISTRIBUICAO_PADRAO.julianna
+  };
+}
+
+// ── Configurações → Distribuição de lucro ──
+function renderResumoDistribuicaoCfg() {
+  var el = document.getElementById('cfg-dist-resumo');
+  if (!el) return;
+  var d = getDistribuicao();
+  el.textContent = 'Fundo de caixa ' + fmtPctMei(d.fundo) + ' · ' + SOCIOS_DIST.map(function(s) { return s.nome + ' ' + fmtPctMei(d[s.id]); }).join(' · ');
+}
+
+function abrirModalDistribuicao() {
+  var d = getDistribuicao();
+  document.getElementById('dist-fundo').value     = d.fundo;
+  document.getElementById('dist-jefferson').value = d.jefferson;
+  document.getElementById('dist-julianna').value  = d.julianna;
+  atualizarTotalDistribuicao();
+  _abrirModalDeConfig('modal-distribuicao');
+}
+
+function _lerDistribuicao() {
+  return {
+    fundo:     parseFloat(document.getElementById('dist-fundo').value)     || 0,
+    jefferson: parseFloat(document.getElementById('dist-jefferson').value) || 0,
+    julianna:  parseFloat(document.getElementById('dist-julianna').value)  || 0
+  };
+}
+function _somaDistribuicao(d) { return Math.round((d.fundo + d.jefferson + d.julianna) * 100) / 100; }
+
+function atualizarTotalDistribuicao() {
+  var el = document.getElementById('dist-total');
+  if (!el) return;
+  var soma = _somaDistribuicao(_lerDistribuicao());
+  el.textContent = 'Total: ' + fmtPctMei(soma) + (soma === 100 ? ' ✓' : ' — deve somar 100%');
+  el.style.color = soma === 100 ? 'var(--green-mid)' : 'var(--red)';
+}
+
+async function salvarDistribuicao() {
+  var d = _lerDistribuicao();
+  if (d.fundo < 0 || d.jefferson < 0 || d.julianna < 0) { toast('⚠ Os percentuais não podem ser negativos'); return; }
+  if (_somaDistribuicao(d) !== 100) { toast('⚠ Os percentuais devem somar 100%'); return; }
+  cfgFinanceiro = Object.assign({}, cfgFinanceiro, { distribuicao: d });
+  try {
+    await _fbSaveDoc('config', 'financeiro', cfgFinanceiro);
+    toast('✓ Distribuição de lucro salva');
+  } catch(e) {
+    toast('⚠ Erro ao salvar: ' + e.message, 'error');
+  }
+  renderResumoDistribuicaoCfg();
+  renderDistribuicaoLucro();
+  fecharModalDeConfig('modal-distribuicao');
+}
+
+// ── Cálculo (consolidado; transferências ficam em coleção própria e não entram) ──
+// lucro do mês = receitas − despesas (retiradas não são despesa)
+// permitido no mês = max(0, lucro do mês) × % do sócio
+// no ano: permitido = max(0, soma dos lucros mensais) × %; saldo = permitido − retirado
+function calcDistribuicaoLucro(ano) {
+  var d = getDistribuicao();
+  var meses = [];
+  for (var i = 0; i < 12; i++) {
+    var m = { receitas: 0, despesas: 0, retirado: {} };
+    SOCIOS_DIST.forEach(function(s) { m.retirado[s.id] = 0; });
+    meses.push(m);
+  }
+  pagamentos.forEach(function(p) {
+    if ((p.data || '').slice(0, 4) !== String(ano)) return;
+    var mi = parseInt(p.data.slice(5, 7), 10) - 1;
+    if (!(mi >= 0 && mi < 12)) return;
+    var v = p.valorPago || 0;
+    if (p.tipo === 'Receita') meses[mi].receitas += v;
+    else if (p.tipo === 'Despesa') meses[mi].despesas += v;
+    else if (p.tipo === 'Retirada') {
+      var s = SOCIOS_DIST.find(function(x) { return x.nome.toLowerCase() === (p.retiradaPessoa || '').toLowerCase(); });
+      if (s) meses[mi].retirado[s.id] += v;
+    }
+  });
+
+  var tot = { receitas: 0, despesas: 0, lucro: 0, retirado: {}, permitido: {}, saldo: {} };
+  SOCIOS_DIST.forEach(function(s) { tot.retirado[s.id] = 0; });
+  meses.forEach(function(m) {
+    m.lucro = m.receitas - m.despesas;
+    m.permitido = {};
+    SOCIOS_DIST.forEach(function(s) {
+      m.permitido[s.id] = Math.max(0, m.lucro) * d[s.id] / 100;
+      tot.retirado[s.id] += m.retirado[s.id];
+    });
+    tot.receitas += m.receitas;
+    tot.despesas += m.despesas;
+    tot.lucro    += m.lucro;
+  });
+  tot.fundo = Math.max(0, tot.lucro) * d.fundo / 100;
+  SOCIOS_DIST.forEach(function(s) {
+    tot.permitido[s.id] = Math.max(0, tot.lucro) * d[s.id] / 100;
+    tot.saldo[s.id]     = tot.permitido[s.id] - tot.retirado[s.id];
+  });
+  return { ano: Number(ano), pct: d, meses: meses, total: tot };
+}
+
+// ── Página Distribuição de Lucro ──
+function renderDistribuicaoLucro() {
+  var sel = document.getElementById('dl-ano');
+  var cardsEl = document.getElementById('dl-cards');
+  if (!sel || !cardsEl) return;
+  var anoAtual = new Date().getFullYear();
+  var anos = {};
+  anos[anoAtual] = true;
+  pagamentos.forEach(function(p) { if (p.data) anos[p.data.slice(0, 4)] = true; });
+  var lista = Object.keys(anos).map(Number).sort(function(a, b) { return b - a; });
+  var escolhido = parseInt(sel.value, 10) || anoAtual;
+  sel.innerHTML = lista.map(function(a) { return '<option value="' + a + '">' + a + '</option>'; }).join('');
+  sel.value = lista.indexOf(escolhido) !== -1 ? escolhido : anoAtual;
+
+  var r = calcDistribuicaoLucro(parseInt(sel.value, 10));
+  var t = r.total;
+  var corValor = function(v) { return v >= 0 ? 'var(--green-deep)' : 'var(--red)'; };
+
+  cardsEl.innerHTML =
+      '<div class="stat-card"><div class="stat-label">Receitas</div><div class="stat-value" style="font-size:22px">' + fmtVal(t.receitas) + '</div></div>'
+    + '<div class="stat-card"><div class="stat-label">Despesas</div><div class="stat-value" style="font-size:22px;color:var(--red)">' + fmtVal(t.despesas) + '</div></div>'
+    + '<div class="stat-card highlight"><div class="stat-label">Lucro do ano</div><div class="stat-value" style="font-size:22px' + (t.lucro < 0 ? ';color:#f3b0b3' : '') + '">' + fmtVal(t.lucro) + '</div><div class="stat-hint">Receitas − despesas</div></div>'
+    + '<div class="stat-card"><div class="stat-label">Fundo de caixa</div><div class="stat-value" style="font-size:22px">' + fmtVal(t.fundo) + '</div><div class="stat-hint">' + fmtPctMei(r.pct.fundo) + ' do lucro</div></div>'
+    + SOCIOS_DIST.map(function(s) {
+        var saldo = t.saldo[s.id];
+        return '<div class="stat-card" style="border-left:3px solid ' + corValor(saldo) + '">'
+          + '<div class="stat-label">' + s.nome + ' · ' + fmtPctMei(r.pct[s.id]) + '</div>'
+          + '<div style="font-size:13px;line-height:1.8">Permitido: <strong>' + fmtVal(t.permitido[s.id]) + '</strong><br>Retirado: <strong>' + fmtVal(t.retirado[s.id]) + '</strong></div>'
+          + '<div style="font-size:12px;color:var(--text-muted);margin-top:6px">Saldo disponível</div>'
+          + '<div style="font-size:20px;font-weight:600;color:' + corValor(saldo) + '">' + fmtVal(saldo) + '</div>'
+          + '</div>';
+      }).join('');
+
+  var celRetirado = function(ret, perm) {
+    return '<td style="font-size:13px' + (ret > perm + 0.005 ? ';color:var(--red);font-weight:600' : '') + '">' + (ret ? fmtVal(ret) : '—') + '</td>';
+  };
+  document.getElementById('dl-tbody').innerHTML = r.meses.map(function(m, i) {
+    return '<tr>'
+      + '<td style="font-size:13px">' + MESES_MEI[i] + '</td>'
+      + '<td style="font-size:13px;font-weight:500;color:' + corValor(m.lucro) + '">' + fmtVal(m.lucro) + '</td>'
+      + SOCIOS_DIST.map(function(s) {
+          return '<td style="font-size:13px">' + fmtVal(m.permitido[s.id]) + '</td>' + celRetirado(m.retirado[s.id], m.permitido[s.id]);
+        }).join('')
+      + '</tr>';
+  }).join('');
+  document.getElementById('dl-tfoot').innerHTML = '<tr>'
+    + '<td>Total ' + r.ano + '</td>'
+    + '<td style="color:' + corValor(t.lucro) + '">' + fmtVal(t.lucro) + '</td>'
+    + SOCIOS_DIST.map(function(s) {
+        return '<td>' + fmtVal(t.permitido[s.id]) + '</td>' + celRetirado(t.retirado[s.id], t.permitido[s.id]);
+      }).join('')
+    + '</tr>';
+
+  document.getElementById('dl-nota').innerHTML =
+      '<strong style="color:var(--text)">Como é calculado</strong><br>'
+    + '• <strong>Lucro do mês</strong> = receitas − despesas de todos os lançamentos do mês (os dois MEIs juntos). Retiradas não contam como despesa e transferências entre contas não entram.<br>'
+    + '• <strong>Permitido no mês</strong> = lucro do mês × % do sócio. Em mês com prejuízo, o permitido é zero. O retirado aparece em vermelho quando passa do permitido no mês.<br>'
+    + '• <strong>No ano</strong>, o lucro é a soma dos lucros mensais, incluindo os negativos. O permitido anual (linha de total) = lucro do ano × % do sócio, por isso pode ser menor que a soma dos permitidos mensais quando algum mês teve prejuízo.<br>'
+    + '• <strong>Saldo disponível</strong> = permitido anual − retirado no ano. <strong>Fundo de caixa</strong> = lucro do ano × ' + fmtPctMei(r.pct.fundo) + '.<br>'
+    + '• Retirados = lançamentos do tipo Retirada, pela pessoa informada. Percentuais em Configurações → Distribuição de lucro.';
+}
 
 // Init: controlado pelo Firebase onAuthStateChanged → _fbInitData()
 // verificarAlertasAbertura e verificarLembreteBackup são chamados lá.
