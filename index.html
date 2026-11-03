@@ -71,7 +71,8 @@ function _deleg(nome, args) {
 // Cada um apenas enfileira a chamada real
 ['navigate','toggleLoginGroup','abrirModalOutro','exportarBackupComLembrete',
  'importarBackup','googleAlertaManual','toggleDarkMode','fazerLogout',
- 'openModalCliente','abrirModalLicenca','abrirModalProcesso','abrirModalServico'
+ 'openModalCliente','abrirModalLicenca','abrirModalProcesso','abrirModalServico',
+ 'toggleNavGroup','abrirConfiguracoes','propConfigurarNumeracao'
 ].forEach(function(nome) {
   if (!window[nome]) {
     window[nome] = function() { _deleg(nome, Array.from(arguments)); };
@@ -206,6 +207,18 @@ function fazerLogout() {
   .nav-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
   .nav-item.active { background: var(--green-mid); color: #fff; font-weight: 500; }
   .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-group-label { display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; margin-top:14px; }
+  .nav-group-label:hover { color: rgba(255,255,255,0.6); }
+  .nav-group-arrow { font-size:9px; opacity:0.7; }
+  .nav-group-items.recolhido { display:none; }
+  .nav-badge { margin-left:auto; min-width:18px; height:18px; padding:0 6px; border-radius:9px; background:#c1666b; color:#fff; font-size:10px; font-weight:600; line-height:18px; text-align:center; }
+  .nav-badge.oculto, .nav-dot.oculto { display:none; }
+  .nav-dot { margin-left:auto; width:8px; height:8px; border-radius:50%; background:#e05555; }
+  .cfg-secao { border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:12px; }
+  .cfg-secao h4 { font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; }
+  .cfg-secao .cfg-info { font-size:12px; color:var(--text-muted); margin-top:8px; }
+  .cfg-secao.cfg-risco { border-color:#e0a0a3; }
+  .cfg-secao.cfg-risco h4 { color:#c1666b; }
   .sidebar-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; color: rgba(255,255,255,0.3); }
 
   .main { margin-left: 240px; flex: 1; padding: 32px 36px; min-height: 100vh; }
@@ -388,10 +401,14 @@ function fazerLogout() {
     <span style="font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:0.1em;text-transform:uppercase">Consultoria Ambiental</span>
   </div>
   <div class="nav-section">
-    <div class="nav-label">Menu</div>
-
     <button class="nav-item active" onclick="navigate('dashboard')"><span class="nav-icon">📊</span> Dashboard</button>
     <button class="nav-item" onclick="navigate('clientes')"><span class="nav-icon">👥</span> Clientes</button>
+
+    <div class="nav-label nav-group-label" onclick="toggleNavGroup('ambiental')"><span>Ambiental</span><span class="nav-group-arrow" id="navgrp-arrow-ambiental">▼</span></div>
+    <div class="nav-group-items" id="navgrp-ambiental">
+    <button class="nav-item" onclick="navigate('licencas')"><span class="nav-icon">📋</span> Licenças<span class="nav-badge oculto" id="nav-badge-licencas"></span></button>
+    <button class="nav-item" onclick="navigate('condicionantes')"><span class="nav-icon">📌</span> Condicionantes<span class="nav-badge oculto" id="nav-badge-condicionantes"></span></button>
+    <button class="nav-item" onclick="navigate('processos')"><span class="nav-icon">⚙️</span> Processos</button>
 
     <!-- Grupo Logins -->
     <button class="nav-item" id="nav-logins-toggle" onclick="toggleLoginGroup()" style="justify-content:space-between">
@@ -405,21 +422,27 @@ function fazerLogout() {
       <div id="logins-extras"></div>
       <button class="nav-item" onclick="abrirModalOutro()" style="color:rgba(255,255,255,0.4);font-size:13px"><span class="nav-icon" style="font-size:12px">＋</span> Novo sistema</button>
     </div>
-    <button class="nav-item" onclick="navigate('licencas')"><span class="nav-icon">📋</span> Licenças</button>
-    <button class="nav-item" onclick="navigate('condicionantes')"><span class="nav-icon">📌</span> Condicionantes</button>
-    <button class="nav-item" onclick="navigate('processos')"><span class="nav-icon">⚙️</span> Processos</button>
+    </div>
+
+    <div class="nav-label nav-group-label" onclick="toggleNavGroup('comercial')"><span>Comercial</span><span class="nav-group-arrow" id="navgrp-arrow-comercial">▼</span></div>
+    <div class="nav-group-items" id="navgrp-comercial">
+    <button class="nav-item" onclick="navigate('prospeccao')"><span class="nav-icon">🎯</span> Prospecção</button>
+    <button class="nav-item" onclick="navigate('contatos')"><span class="nav-icon">📒</span> Contatos</button>
+    <button class="nav-item" onclick="navigate('propostas')"><span class="nav-icon">📝</span> Propostas<span class="nav-badge oculto" id="nav-badge-propostas"></span></button>
+    </div>
+
+    <div class="nav-label nav-group-label" onclick="toggleNavGroup('financeiro')"><span>Financeiro</span><span class="nav-group-arrow" id="navgrp-arrow-financeiro">▼</span></div>
+    <div class="nav-group-items" id="navgrp-financeiro">
     <button class="nav-item" onclick="navigate('dashfinanceiro')"><span class="nav-icon">💰</span> Dashboard Financeiro</button>
     <button class="nav-item" onclick="navigate('servicos')"><span class="nav-icon">📁</span> Serviços</button>
     <button class="nav-item" onclick="navigate('pagamentos')"><span class="nav-icon">💳</span> Pagamentos</button>
     <button class="nav-item" onclick="navigate('balanco')"><span class="nav-icon">📊</span> Balanço</button>
+    </div>
 
-    <div class="nav-label" style="margin-top:12px">Comercial</div>
-    <button class="nav-item" onclick="navigate('prospeccao')"><span class="nav-icon">🎯</span> Prospecção</button>
-    <button class="nav-item" onclick="navigate('contatos')"><span class="nav-icon">📒</span> Contatos</button>
-    <button class="nav-item" onclick="navigate('propostas')"><span class="nav-icon">📝</span> Propostas</button>
-
-    <div class="nav-label" style="margin-top:12px">Trabalhista</div>
+    <div class="nav-label nav-group-label" onclick="toggleNavGroup('seguranca')"><span>Segurança do Trabalho</span><span class="nav-group-arrow" id="navgrp-arrow-seguranca">▼</span></div>
+    <div class="nav-group-items" id="navgrp-seguranca">
     <button class="nav-item" onclick="navigate('sesmt')"><span class="nav-icon">🩺</span> Controle de Exames</button>
+    </div>
   </div>
   <div class="sidebar-footer">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08)">
@@ -427,14 +450,46 @@ function fazerLogout() {
       <span id="login-user-email" style="font-size:11px;color:rgba(255,255,255,0.5);word-break:break-all;flex:1"></span>
       <button onclick="fazerLogout()" title="Sair" style="background:rgba(193,102,107,0.2);border:1px solid rgba(193,102,107,0.4);border-radius:6px;color:#e07070;font-size:11px;padding:4px 8px;cursor:pointer;font-family:inherit;white-space:nowrap">Sair</button>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <button id="btn-backup-lembrete" onclick="exportarBackupComLembrete()" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:6px;color:rgba(255,255,255,0.7);font-size:11px;padding:6px 4px;cursor:pointer;font-family:inherit" title="Exportar backup">💾 Backup</button>
-      <button onclick="importarBackup()" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:6px;color:rgba(255,255,255,0.7);font-size:11px;padding:6px 4px;cursor:pointer;font-family:inherit" title="Importar backup">📂 Restaurar</button>
-    </div>
-    <button onclick="googleAlertaManual()" style="width:100%;background:rgba(233,196,106,0.12);border:1px solid rgba(233,196,106,0.25);border-radius:6px;color:rgba(233,196,106,0.85);font-size:11px;padding:6px 4px;cursor:pointer;font-family:inherit;margin-bottom:8px" title="Enviar alertas de vencimento agora">📅 Enviar alertas agora</button>
-    <button class="dark-toggle" id="btn-dark" onclick="toggleDarkMode()" style="width:100%">🌙 Modo escuro</button>
+    <button class="nav-item" onclick="abrirConfiguracoes()" style="margin:0"><span class="nav-icon">⚙️</span> Configurações<span class="nav-dot oculto" id="nav-dot-config" title="Backup pendente"></span></button>
   </div>
 </nav>
+
+<!-- MODAL CONFIGURAÇÕES -->
+<div class="modal-overlay" id="modal-config">
+  <div class="modal" style="width:520px">
+    <div class="modal-header">
+      <h3>⚙️ Configurações</h3>
+      <button class="modal-close" onclick="closeModal('modal-config')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="cfg-secao">
+        <h4>💾 Backup</h4>
+        <button class="btn btn-secondary btn-sm" onclick="exportarBackupComLembrete()">Exportar backup</button>
+        <div class="cfg-info" id="cfg-ultimo-backup">—</div>
+      </div>
+      <div class="cfg-secao">
+        <h4>📅 Alertas Google</h4>
+        <button class="btn btn-secondary btn-sm" onclick="googleAlertaManual()">Enviar alertas agora</button>
+      </div>
+      <div class="cfg-secao">
+        <h4>📝 Numeração de propostas</h4>
+        <button class="btn btn-secondary btn-sm" onclick="propConfigurarNumeracao()" title="Definir o último número usado no ano">⚙ Numeração</button>
+      </div>
+      <div class="cfg-secao">
+        <h4>🎨 Aparência</h4>
+        <button class="btn btn-secondary btn-sm" id="btn-dark" onclick="toggleDarkMode()">🌙 Modo escuro</button>
+      </div>
+      <div class="cfg-secao cfg-risco">
+        <h4>⚠ Zona de risco</h4>
+        <button class="btn btn-danger btn-sm" onclick="importarBackup()">📂 Restaurar backup</button>
+        <div class="cfg-info">Substitui os dados atuais pelos do arquivo</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-config')">Fechar</button>
+    </div>
+  </div>
+</div>
 
 <main class="main">
 
@@ -1049,7 +1104,6 @@ function fazerLogout() {
   <div class="topbar">
     <div><h2>Propostas</h2><div class="topbar-sub" id="propostas-count">—</div></div>
     <div style="display:flex;gap:8px">
-      <button class="btn btn-secondary btn-sm" onclick="propConfigurarNumeracao()" title="Definir o último número usado no ano">⚙ Numeração</button>
       <button class="btn btn-primary" onclick="abrirModalProposta()">＋ Nova proposta</button>
     </div>
   </div>
@@ -1819,6 +1873,73 @@ async function buscarCep() {
 }
 
 // NAVEGAÇÃO
+// ── Grupos recolhíveis do menu lateral (estado em localStorage) ──
+var NAV_GRUPOS_KEY = 'eng_nav_grupos';
+function _navGruposLer() {
+  try { return JSON.parse(localStorage.getItem(NAV_GRUPOS_KEY)) || {}; } catch (e) { return {}; }
+}
+function _navGruposSalvar(estado) {
+  try { localStorage.setItem(NAV_GRUPOS_KEY, JSON.stringify(estado)); } catch (e) {}
+}
+function _navGrupoAplicar(grupo, recolhido) {
+  var itens = document.getElementById('navgrp-' + grupo);
+  var seta  = document.getElementById('navgrp-arrow-' + grupo);
+  if (!itens) return;
+  itens.classList.toggle('recolhido', recolhido);
+  if (seta) seta.textContent = recolhido ? '▶' : '▼';
+}
+function toggleNavGroup(grupo) {
+  var itens = document.getElementById('navgrp-' + grupo);
+  if (!itens) return;
+  var recolhido = !itens.classList.contains('recolhido');
+  _navGrupoAplicar(grupo, recolhido);
+  var estado = _navGruposLer();
+  estado[grupo] = recolhido;
+  _navGruposSalvar(estado);
+}
+(function() {
+  var estado = _navGruposLer();
+  Object.keys(estado).forEach(function(g) { _navGrupoAplicar(g, !!estado[g]); });
+  // Ao navegar, expande o grupo que contém o item ativo (observa a classe .active, sem alterar navigate)
+  var secao = document.querySelector('.sidebar .nav-section');
+  if (!secao || !window.MutationObserver) return;
+  new MutationObserver(function() {
+    var ativo = secao.querySelector('.nav-group-items.recolhido .nav-item.active');
+    if (!ativo) return;
+    var grupo = ativo.closest('.nav-group-items').id.replace('navgrp-', '');
+    _navGrupoAplicar(grupo, false);
+    var est = _navGruposLer();
+    est[grupo] = false;
+    _navGruposSalvar(est);
+  }).observe(secao, { subtree: true, attributes: true, attributeFilter: ['class'] });
+})();
+
+// ── Contadores do menu (mesmos critérios dos painéis do Dashboard) ──
+function _setNavBadge(id, n) {
+  var el = document.getElementById('nav-badge-' + id);
+  if (!el) return;
+  el.textContent = n;
+  el.classList.toggle('oculto', !n);
+}
+function atualizarBadgesNav() {
+  _setNavBadge('licencas', licencas.filter(licencaEmAlertaVencimento).length);
+  _setNavBadge('condicionantes', condicionantesEmAlerta().length);
+  _setNavBadge('propostas', propostas.filter(function(p) { return p.status === 'enviada'; }).length);
+}
+
+// ── Configurações ──
+function abrirConfiguracoes() {
+  var info = document.getElementById('cfg-ultimo-backup');
+  if (info) {
+    var ultimo = null;
+    try { ultimo = localStorage.getItem('eng_ultimo_backup'); } catch (e) {}
+    info.textContent = ultimo
+      ? 'Último backup exportado: ' + new Date(parseInt(ultimo, 10)).toLocaleString('pt-BR')
+      : 'Nenhum backup exportado neste navegador';
+  }
+  document.getElementById('modal-config').classList.add('open');
+}
+
 function toggleLoginGroup() {
   var group = document.getElementById('logins-group');
   var arrow = document.getElementById('logins-arrow');
@@ -2574,19 +2695,7 @@ function renderDashboard() {
   // Condicionantes próximas do vencimento (≤45 dias)
   var dc = document.getElementById('dash-condicionantes');
   if (dc) {
-    var hoje = new Date(); hoje.setHours(0,0,0,0);
-    var condAlerts = [];
-    licencas.forEach(function(l) {
-      if (licencaIgnoraCondAlertas(l)) return;
-      (l.condicionantes||[]).forEach(function(c) {
-        if (!c.prazo || c.cumprida) return;
-        var p    = new Date(c.prazo + 'T00:00:00');
-        var dias = Math.ceil((p - hoje) / 86400000);
-        if (dias >= -DIAS_APOS_VENCIMENTO && dias <= 45) {
-          condAlerts.push({ empresa: l.razao_social||'—', descricao: c.descricao||'—', prazo: c.prazo, dias: dias });
-        }
-      });
-    });
+    var condAlerts = condicionantesEmAlerta();
     condAlerts.sort(function(a,b){ return a.prazo.localeCompare(b.prazo); });
     dc.innerHTML = condAlerts.length
       ? condAlerts.map(function(c){
@@ -2606,12 +2715,7 @@ function renderDashboard() {
   var dl = document.getElementById('dash-licencas');
   var _hojeL = new Date(); _hojeL.setHours(0,0,0,0);
   function _diasValidade(l) { return Math.ceil((new Date(l.validade + 'T00:00:00') - _hojeL) / 86400000); }
-  var alertas = licencas.filter(function(l){
-    var s = calcSituacao(l.validade, l.situacao_especial);
-    if (s === 'EM RENOVAÇÃO') return true;
-    if (s === 'PRÓXIMA DO VENCIMENTO') return true;
-    return s === 'LICENÇA VENCIDA' && _diasValidade(l) >= -DIAS_APOS_VENCIMENTO;
-  }).sort(function(a,b){
+  var alertas = licencas.filter(licencaEmAlertaVencimento).sort(function(a,b){
     return (a.validade||'').localeCompare(b.validade||'');
   });
   if (dl) dl.innerHTML = alertas.length
@@ -2619,7 +2723,6 @@ function renderDashboard() {
         var sit   = calcSituacao(l.validade, l.situacao_especial);
         var badge = SITUACAO_BADGE[sit] || 'background:#f0f0f0;color:#555';
         var texto = sit === 'LICENÇA VENCIDA' ? 'Vencida há ' + Math.abs(_diasValidade(l)) + 'd'
-                  : sit === 'EM RENOVAÇÃO' ? 'Em renovação' + (l.renovacaoProtocolo ? ' · Prot. ' + l.renovacaoProtocolo : '')
                   : sit;
         return '<tr>'
           + '<td style="font-weight:500;font-size:12px;max-width:100px;white-space:normal;line-height:1.3">' + (l.razao_social||'—') + '</td>'
@@ -2629,6 +2732,7 @@ function renderDashboard() {
           + '</tr>';
       }).join('')
     : '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma licença próxima do vencimento</td></tr>';
+  atualizarBadgesNav();
 }
 
 function toggleOutroTipoProc() {
@@ -3386,6 +3490,32 @@ var SITUACOES_ESPECIAIS = ['SUSPENSA','CANCELADA','EM RENOVAÇÃO','RENOVADA','N
 // Condicionantes destas licenças não geram alertas
 function licencaIgnoraCondAlertas(l) {
   return ['RENOVADA','NÃO RENOVADA','CANCELADA'].indexOf(l.situacao_especial) !== -1;
+}
+
+// Critérios únicos dos alertas — usados pelos painéis do Dashboard e pelos contadores do menu
+function licencaEmAlertaVencimento(l) {
+  var s = calcSituacao(l.validade, l.situacao_especial);
+  if (s === 'PRÓXIMA DO VENCIMENTO') return true;
+  if (s !== 'LICENÇA VENCIDA') return false;
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  return Math.ceil((new Date(l.validade + 'T00:00:00') - hoje) / 86400000) >= -DIAS_APOS_VENCIMENTO;
+}
+
+function condicionantesEmAlerta() {
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var condAlerts = [];
+  licencas.forEach(function(l) {
+    if (licencaIgnoraCondAlertas(l)) return;
+    (l.condicionantes||[]).forEach(function(c) {
+      if (!c.prazo || c.cumprida) return;
+      var p    = new Date(c.prazo + 'T00:00:00');
+      var dias = Math.ceil((p - hoje) / 86400000);
+      if (dias >= -DIAS_APOS_VENCIMENTO && dias <= 45) {
+        condAlerts.push({ empresa: l.razao_social||'—', descricao: c.descricao||'—', prazo: c.prazo, dias: dias });
+      }
+    });
+  });
+  return condAlerts;
 }
 
 // Antecedência do protocolo de renovação (LC 140/2011, art. 14, §4º)
@@ -6233,10 +6363,8 @@ function verificarLembreteBackup() {
   var agora  = Date.now();
   var SETE_DIAS = 7 * 24 * 60 * 60 * 1000;
   if (!ultimo || (agora - parseInt(ultimo)) > SETE_DIAS) {
-    setTimeout(function() {
-      var btn = document.getElementById('btn-backup-lembrete');
-      if (btn) btn.style.animation = 'pulse-backup 1.5s ease-in-out 3';
-    }, 2000);
+    var dot = document.getElementById('nav-dot-config');
+    if (dot) dot.classList.remove('oculto');
     toast('💾 Lembrete: faça um backup dos dados!');
   }
 }
@@ -6244,8 +6372,10 @@ function verificarLembreteBackup() {
 function exportarBackupComLembrete() {
   exportarBackup();
   localStorage.setItem('eng_ultimo_backup', Date.now().toString());
-  var btn = document.getElementById('btn-backup-lembrete');
-  if (btn) btn.style.animation = '';
+  var dot = document.getElementById('nav-dot-config');
+  if (dot) dot.classList.add('oculto');
+  var info = document.getElementById('cfg-ultimo-backup');
+  if (info) info.textContent = 'Último backup exportado: ' + new Date().toLocaleString('pt-BR');
 }
 
 // ── MELHORIA 4: FILTRO DE DATA EM PAGAMENTOS ─────────
@@ -7544,6 +7674,7 @@ function fmtMoedaStr(v) {
 }
 
 function renderPropostas() {
+  atualizarBadgesNav();
   var q  = (document.getElementById('search-propostas')||{value:''}).value.toLowerCase();
   var st = (document.getElementById('filter-prop-status')||{value:''}).value;
   var lista = propostas.filter(function(p){
