@@ -293,6 +293,9 @@ function fazerLogout() {
   .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); padding: 4px; line-height: 1; }
   .modal-body { padding: 24px 28px; max-height: 72vh; overflow-y: auto; }
   .modal-footer { padding: 16px 28px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+  /* Modais de altura automática: sem rolagem interna no corpo; se não couber, rola o overlay inteiro */
+  .modal.modal-auto .modal-body { max-height: none; overflow: visible; }
+  @media (max-height: 767px) { .modal-overlay { padding: 16px 12px; } }
 
   .form-section { margin-bottom: 22px; }
   .form-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
@@ -459,7 +462,7 @@ function fazerLogout() {
 
 <!-- MODAL CONFIGURAÇÕES -->
 <div class="modal-overlay" id="modal-config">
-  <div class="modal" style="width:520px">
+  <div class="modal modal-auto" style="width:520px">
     <div class="modal-header">
       <h3>⚙️ Configurações</h3>
       <button class="modal-close" onclick="closeModal('modal-config')">✕</button>
@@ -1618,7 +1621,7 @@ function fazerLogout() {
 
 <!-- MODAL EMPRESAS (MEI) -->
 <div class="modal-overlay" id="modal-meis">
-  <div class="modal" style="width:660px">
+  <div class="modal modal-auto" style="width:660px">
     <div class="modal-header">
       <h3>🏢 Empresas</h3>
       <button class="modal-close" onclick="fecharModalDeConfig('modal-meis')">✕</button>
@@ -1664,7 +1667,7 @@ function fazerLogout() {
 
 <!-- MODAL CONTA BANCÁRIA -->
 <div class="modal-overlay" id="modal-conta">
-  <div class="modal" style="width:620px">
+  <div class="modal modal-auto" style="width:620px">
     <div class="modal-header">
       <h3 id="modal-conta-title">Nova conta bancária</h3>
       <button class="modal-close" onclick="closeModal('modal-conta')">✕</button>
@@ -1724,7 +1727,7 @@ function fazerLogout() {
 
 <!-- MODAL TRANSFERÊNCIA -->
 <div class="modal-overlay" id="modal-transferencia">
-  <div class="modal" style="width:560px">
+  <div class="modal modal-auto" style="width:560px">
     <div class="modal-header">
       <h3 id="modal-transf-title">Nova transferência</h3>
       <button class="modal-close" onclick="closeModal('modal-transferencia')">✕</button>
@@ -1732,20 +1735,20 @@ function fazerLogout() {
     <div class="modal-body">
       <div class="form-grid">
         <div class="field">
-          <label>Data *</label>
-          <input type="date" id="tf-data">
-        </div>
-        <div class="field">
-          <label>Valor (R$) *</label>
-          <input type="text" id="tf-valor" placeholder="R$ 0,00" oninput="fmtMoedaInput(this);atualizarAvisoTransferencia()">
-        </div>
-        <div class="field">
           <label>Conta de origem *</label>
           <select id="tf-origem" onchange="atualizarAvisoTransferencia()"></select>
         </div>
         <div class="field">
           <label>Conta de destino *</label>
           <select id="tf-destino"></select>
+        </div>
+        <div class="field">
+          <label>Data *</label>
+          <input type="date" id="tf-data">
+        </div>
+        <div class="field">
+          <label>Valor (R$) *</label>
+          <input type="text" id="tf-valor" placeholder="R$ 0,00" oninput="fmtMoedaInput(this);atualizarAvisoTransferencia()">
         </div>
         <div class="field form-full">
           <label>Observação</label>
@@ -8059,23 +8062,40 @@ function googleMarcarAlertaHoje() {
   localStorage.setItem(CHAVE_ULTIMO_ALERTA, hojeLocal());
 }
 
-// ── Registro de eventos já criados: usuarios/{uid}/config/alertasGoogle = { eventos: { chave: idEvento } }
+// ── Registro: usuarios/{uid}/config/alertasGoogle = { eventos: { chave: idEvento }, ultimoResumoSemanal: 'AAAA-Www' }
 function googleChaveEvento(item) {
   var ref = item.licencaId || item.numero || item.empresa;
   return [item.tipo, ref, item.tipo === 'condicionante' ? item.descricao : '', item.prazo]
     .join('|').replace(/[.\/\[\]*~`]/g, '_');
 }
 
-async function googleCarregarEventosCriados() {
+async function googleCarregarConfigAlertas() {
   const { db, doc, getDoc } = window._fb;
   var snap = await getDoc(doc(db, 'usuarios', _fbUid(), 'config', 'alertasGoogle'));
-  return (snap.exists() && snap.data().eventos) || {};
+  var d = snap.exists() ? snap.data() : {};
+  return { eventos: d.eventos || {}, ultimoResumoSemanal: d.ultimoResumoSemanal || '' };
 }
 
 async function googleRegistrarEvento(chave, idEvento) {
   const { db, doc, setDoc } = window._fb;
   var eventos = {}; eventos[chave] = idEvento;
   await setDoc(doc(db, 'usuarios', _fbUid(), 'config', 'alertasGoogle'), { eventos: eventos }, { merge: true });
+}
+
+async function googleRegistrarResumoSemanal(semana) {
+  const { db, doc, setDoc } = window._fb;
+  await setDoc(doc(db, 'usuarios', _fbUid(), 'config', 'alertasGoogle'), { ultimoResumoSemanal: semana }, { merge: true });
+}
+
+// Semana ISO local no formato AAAA-Www (a semana começa na segunda-feira)
+function semanaIsoLocal() {
+  var d = new Date();
+  var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  var diaSem = t.getUTCDay() || 7;             // seg=1 … dom=7
+  t.setUTCDate(t.getUTCDate() + 4 - diaSem);   // a quinta-feira da semana define o ano ISO
+  var inicioAno = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  var semana = Math.ceil(((t - inicioAno) / 86400000 + 1) / 7);
+  return t.getUTCFullYear() + '-W' + String(semana).padStart(2, '0');
 }
 
 // Coleta itens que precisam de alerta
@@ -8173,7 +8193,8 @@ async function googleCriarEvento(token, item) {
 }
 
 // Envia e-mail via Gmail API
-async function googleEnviarEmail(token, itens) {
+async function googleEnviarEmail(token, itens, opcoes) {
+  opcoes = opcoes || {};
   var hoje    = new Date().toLocaleDateString('pt-BR');
   var licList = itens.filter(function(i) { return i.tipo === 'licenca'; });
   var conList = itens.filter(function(i) { return i.tipo === 'condicionante'; });
@@ -8181,7 +8202,7 @@ async function googleEnviarEmail(token, itens) {
   var c = '';
   c += '<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;color:#1a2a1e;max-width:600px;margin:auto;padding:20px">';
   c += '<div style="background:#1a3a2a;padding:20px 24px;border-radius:10px 10px 0 0">';
-  c += '<h1 style="color:#fff;font-size:20px;margin:0">Engenhare - Alertas de Vencimento</h1>';
+  c += '<h1 style="color:#fff;font-size:20px;margin:0">' + (opcoes.titulo || 'Engenhare - Alertas de Vencimento') + '</h1>';
   c += '<p style="color:#52b788;margin:4px 0 0;font-size:13px">' + hoje + '</p></div>';
   c += '<div style="border:1px solid #d4e4d8;border-top:none;border-radius:0 0 10px 10px;padding:20px">';
 
@@ -8225,7 +8246,7 @@ async function googleEnviarEmail(token, itens) {
   c += 'Este e-mail foi gerado automaticamente pelo Engenhare App.</p>';
   c += '</div></' + 'body></' + 'html>';
 
-  var assunto = '[ALERTA] Engenhare - ' + itens.length + ' alerta(s) de vencimento - ' + hoje;
+  var assunto = opcoes.assunto || ('[ALERTA] Engenhare - ' + itens.length + ' alerta(s) de vencimento - ' + hoje);
 
   var raw = [
     'To: ' + ALERTA_EMAIL_DEST,
@@ -8252,9 +8273,31 @@ async function googleEnviarEmail(token, itens) {
   return await resp.json();
 }
 
+// Cria no Calendar os eventos que ainda não estão no registro (registro null = indisponível → não cria, evita duplicidade)
+async function googleCriarEventosFaltantes(token, itens, registro) {
+  var r = { criados: 0, existentes: 0, erros: 0 };
+  for (var i = 0; i < itens.length; i++) {
+    if (!registro) { r.erros++; continue; }
+    var chave = googleChaveEvento(itens[i]);
+    if (registro[chave]) { r.existentes++; continue; }
+    try {
+      var ev = await googleCriarEvento(token, itens[i]);
+      r.criados++;
+      registro[chave] = ev.id;
+      try { await googleRegistrarEvento(chave, ev.id); }
+      catch(e) { console.warn('Evento criado mas não registrado:', e.message); }
+    }
+    catch(e) { r.erros++; console.warn('Evento nao criado:', e.message); }
+  }
+  return r;
+}
+
 // Funcao principal
+// Automático (abertura do site): só pergunta se houver itens novos (sem registro) ou se o resumo semanal estiver pendente.
+// Manual (forcar): envia todos os itens por e-mail e cria os eventos que faltarem.
 async function googleDispararAlertas(forcar) {
-  if (!forcar && googleAlertaJaRodouHoje()) return;
+  if (forcar) return googleEnviarTodosAlertas();
+  if (googleAlertaJaRodouHoje()) return;
 
   var itens = googleColetarItensParaAlertar();
   if (!itens.length) {
@@ -8262,8 +8305,56 @@ async function googleDispararAlertas(forcar) {
     return;
   }
 
-  // Disparo automático: pergunta antes de abrir o pop-up do Google; cancelar também conta como "rodou hoje"
-  if (!forcar && !confirm('Há ' + itens.length + ' alerta(s) de licenças/condicionantes. Enviar para o Google Agenda e e-mail agora?')) {
+  var cfg;
+  try { cfg = await googleCarregarConfigAlertas(); }
+  catch(e) {   // sem o registro não dá para separar novos de já enviados: tenta de novo na próxima abertura
+    console.warn('Registro de alertas indisponível — verificação adiada:', e.message);
+    return;
+  }
+
+  var novos = itens.filter(function(it) { return !cfg.eventos[googleChaveEvento(it)]; });
+  var semana = semanaIsoLocal();
+  var resumoPendente = cfg.ultimoResumoSemanal !== semana;
+
+  // Confirms antes de qualquer await, para o pop-up do Google não ser bloqueado
+  var enviarNovos  = novos.length > 0 && confirm('Há ' + novos.length + ' novo(s) alerta(s) de licenças/condicionantes. Enviar para o Google Agenda e e-mail agora?');
+  var enviarResumo = resumoPendente && confirm('Enviar o resumo semanal de vencimentos por e-mail?');
+
+  googleMarcarAlertaHoje();   // confirmando ou cancelando, não pergunta de novo hoje
+  if (resumoPendente && !enviarResumo) {   // resumo recusado: não pergunta de novo nesta semana
+    googleRegistrarResumoSemanal(semana).catch(function(e) { console.warn('Resumo semanal não registrado:', e.message); });
+  }
+  if (!enviarNovos && !enviarResumo) return;
+
+  toast('Autorizando Google...');
+
+  try {
+    var token = await googleObterToken();
+    var partes = [];
+    if (enviarNovos) {
+      var r = await googleCriarEventosFaltantes(token, novos, cfg.eventos);
+      await googleEnviarEmail(token, novos, { assunto: 'Novos alertas — Engenhare', titulo: 'Engenhare - Novos alertas' });
+      partes.push(r.criados + ' evento(s) novo(s) no Calendar'
+        + (r.erros ? ' (' + r.erros + ' com erro)' : '')
+        + ' + e-mail com ' + novos.length + ' novo(s) alerta(s)');
+    }
+    if (enviarResumo) {
+      await googleEnviarEmail(token, itens, { assunto: 'Resumo semanal de vencimentos — Engenhare', titulo: 'Engenhare - Resumo semanal de vencimentos' });
+      try { await googleRegistrarResumoSemanal(semana); }
+      catch(e) { console.warn('Resumo enviado mas não registrado:', e.message); }
+      partes.push('resumo semanal com ' + itens.length + ' item(ns)');
+    }
+    toast('Alertas enviados: ' + partes.join('; ') + ' para ' + ALERTA_EMAIL_DEST);
+  } catch(e) {
+    console.error('Erro Google Alertas:', e);
+    toast('Erro ao enviar alertas Google: ' + e.message);
+  }
+}
+
+// Envio manual (Configurações → "Enviar alertas agora"): todos os itens no e-mail + eventos que faltarem
+async function googleEnviarTodosAlertas() {
+  var itens = googleColetarItensParaAlertar();
+  if (!itens.length) {
     googleMarcarAlertaHoje();
     return;
   }
@@ -8272,33 +8363,19 @@ async function googleDispararAlertas(forcar) {
 
   try {
     var token = await googleObterToken();
-    var errosCalendar = 0, criados = 0, existentes = 0;
     var registro = null;
-    try { registro = await googleCarregarEventosCriados(); }
+    try { registro = (await googleCarregarConfigAlertas()).eventos; }
     catch(e) { console.warn('Registro de eventos indisponível — eventos não serão criados para evitar duplicidade:', e.message); }
-    for (var i = 0; i < itens.length; i++) {
-      if (!registro) { errosCalendar++; continue; }
-      var chave = googleChaveEvento(itens[i]);
-      if (registro[chave]) { existentes++; continue; }
-      try {
-        var ev = await googleCriarEvento(token, itens[i]);
-        criados++;
-        registro[chave] = ev.id;
-        try { await googleRegistrarEvento(chave, ev.id); }
-        catch(e) { console.warn('Evento criado mas não registrado:', e.message); }
-      }
-      catch(e) { errosCalendar++; console.warn('Evento nao criado:', e.message); }
-    }
+    var r = await googleCriarEventosFaltantes(token, itens, registro);
     await googleEnviarEmail(token, itens);
     googleMarcarAlertaHoje();
-    var msg = 'Alertas enviados: ' + criados + ' evento(s) novo(s) no Calendar'
-      + (existentes ? ' (' + existentes + ' já existiam)' : '')
+    var msg = 'Alertas enviados: ' + r.criados + ' evento(s) novo(s) no Calendar'
+      + (r.existentes ? ' (' + r.existentes + ' já existiam)' : '')
       + ' + e-mail para ' + ALERTA_EMAIL_DEST;
-    if (errosCalendar) msg += ' (' + errosCalendar + ' evento(s) com erro)';
+    if (r.erros) msg += ' (' + r.erros + ' evento(s) com erro)';
     toast(msg);
   } catch(e) {
     console.error('Erro Google Alertas:', e);
-    if (!forcar) googleMarcarAlertaHoje();   // erro de autorização/pop-up fechado: não insistir de novo hoje
     toast('Erro ao enviar alertas Google: ' + e.message);
   }
 }
@@ -10495,7 +10572,7 @@ function sdPopulate(prefix, items) {
 
 <!-- MODAL VINCULAR CLIENTE -->
 <div class="modal-overlay" id="modal-vincular-cliente">
-  <div class="modal" style="width:540px">
+  <div class="modal modal-auto" style="width:540px">
     <div class="modal-header">
       <h3>Vincular cliente à proposta</h3>
       <button class="modal-close" onclick="_propCancelarVincular()">✕</button>
