@@ -1284,7 +1284,6 @@ function fazerLogout() {
           <button type="button" id="serv-btn-tabela" onclick="servSetView('tabela')">☰ Tabela</button>
         </div>
         <button type="button" class="btn btn-secondary" id="serv-btn-valores" onclick="servAlternarValores()" title="Mostrar ou ocultar valor, recebido e saldo">💲 Mostrar valores</button>
-        <button class="btn btn-secondary" onclick="renumerarServicos()" title="Renumera todos os projetos pelo ano da data de início">🔢 Renumerar existentes</button>
         <button class="btn btn-primary" onclick="abrirModalServico()">＋ Novo projeto</button>
       </div>
     </div>
@@ -1321,7 +1320,7 @@ function fazerLogout() {
         <table>
           <thead>
             <tr>
-              <th>#</th>
+              <th>Nº</th>
               <th>Cliente</th>
               <th>Descrição</th>
               <th>Situação</th>
@@ -7119,11 +7118,10 @@ async function salvarServico() {
   var existing = servicoEditId ? servicos.find(function(x){ return x.id === servicoEditId; }) : null;
 
   // Ano base: usa data de início se informada, senão ano atual
-  var anoBase = dataInicio
-    ? parseInt(dataInicio.slice(0, 4))
-    : new Date().getFullYear();
+  var anoBase = parseInt((dataInicio || hojeLocal()).slice(0, 4));
 
-  var proximoNum = servicoEditId
+  // Editar mantém o número; projeto novo ou existente SEM número recebe o próximo disponível do ano
+  var proximoNum = (existing && existing.numero)
     ? existing.numero
     : gerarNumeroServico(anoBase);
 
@@ -7265,38 +7263,6 @@ function gerarNumeroServico(ano) {
     return parseInt(String(x.numero).slice(4)) || 0;
   }));
   return parseInt(anoStr + String(maxSeq + 1).padStart(3, '0'));
-}
-
-// Revisa e renumera todos os serviços existentes pelo ano da data de início
-async function renumerarServicos() {
-  if (!confirm('Isso vai renumerar TODOS os projetos existentes.\n\nO número será gerado pelo ano da data de início.\nProjetos sem data de início usarão o ano atual.\n\nDeseja continuar?')) return;
-
-  // Ordena por data de início (mais antigos primeiro) para sequencial correto
-  var ordenados = servicos.slice().sort(function(a, b) {
-    var da = a.dataInicio || a.createdAt || '';
-    var db = b.dataInicio || b.createdAt || '';
-    return da.localeCompare(db);
-  });
-
-  // Contadores por ano
-  var contadores = {};
-  ordenados.forEach(function(s) {
-    var ano    = s.dataInicio ? parseInt(s.dataInicio.slice(0, 4)) : new Date().getFullYear();
-    var anoStr = String(ano);
-    contadores[anoStr] = (contadores[anoStr] || 0) + 1;
-    var novoNum = parseInt(anoStr + String(contadores[anoStr]).padStart(3, '0'));
-    servicos = servicos.map(function(x) {
-      return x.id === s.id ? Object.assign({}, x, { numero: novoNum }) : x;
-    });
-  });
-
-  try {
-    for (const s of servicos) await _fbSaveDoc('servicos', s.id, s);
-    toast('✓ ' + servicos.length + ' projeto(s) renumerados com sucesso!');
-  } catch(e) {
-    toast('⚠ Erro ao salvar: ' + e.message, 'error');
-  }
-  renderServicos();
 }
 
 
@@ -7872,7 +7838,7 @@ function renderRecebimentos() {
   if (sub) sub.textContent = lista.length + ' projeto' + (lista.length!==1?'s':'');
 
   var comQuitadoEm = aba === 'quitados';
-  thead.innerHTML = '<tr><th>#</th><th>Cliente</th><th>Projeto</th><th>Valor total</th><th>Total pago</th><th>Resta</th><th>Status</th>'
+  thead.innerHTML = '<tr><th>Nº</th><th>Cliente</th><th>Projeto</th><th>Valor total</th><th>Total pago</th><th>Resta</th><th>Status</th>'
     + (comQuitadoEm ? '<th>Quitado em</th>' : '') + '<th>Ações</th></tr>';
   var nCols = comQuitadoEm ? 9 : 8;
 
